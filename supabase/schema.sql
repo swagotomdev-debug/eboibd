@@ -322,6 +322,40 @@ create policy "Public can view approved reviews" on public.reviews for select us
 drop policy if exists "Admins full access to reviews" on public.reviews;
 create policy "Admins full access to reviews" on public.reviews for all using (public.is_admin());
 
+-- Settings Table (Handles and replaces any legacy conflicting table automatically)
+do $$
+begin
+  if exists (
+    select 1 from information_schema.tables 
+    where table_schema = 'public' and table_name = 'settings'
+  ) and not exists (
+    select 1 from information_schema.columns 
+    where table_schema = 'public' and table_name = 'settings' and column_name = 'key'
+  ) then
+    drop table public.settings cascade;
+  end if;
+end $$;
+
+create table if not exists public.settings (
+  key text primary key,
+  value text not null,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.settings enable row level security;
+drop policy if exists "Public can view settings" on public.settings;
+create policy "Public can view settings" on public.settings for select using (true);
+drop policy if exists "Admins can manage settings" on public.settings;
+create policy "Admins can manage settings" on public.settings for all using (public.is_admin());
+
+insert into public.settings (key, value)
+values 
+  ('combo_active', 'true'),
+  ('banner_text', '৪টা বই একসাথে মেগা কম্বো মাত্র ৳১৪৯! সীমিত সময়ের বিশেষ অফার'),
+  ('offer_ends_at', '')
+on conflict (key) do update set
+  value = excluded.value;
+
 -- Site Settings Table (Offer countdown & banner text)
 create table if not exists public.site_settings (
   key text primary key,
