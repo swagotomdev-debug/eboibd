@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" fill="none">
+  <circle cx="80" cy="80" r="74" fill="#fffbeb" stroke="#f59e0b" stroke-width="4" stroke-dasharray="6 4"/>
+  <circle cx="80" cy="80" r="62" fill="#fef3c7" />
+  <circle cx="80" cy="80" r="50" fill="#d97706" />
+  <path d="M80 50L87 64L102 66L91 76L94 91L80 83L66 91L69 76L58 66L73 64L80 50Z" fill="#fbbf24" stroke="#ffffff" stroke-width="1.5"/>
+  <text x="80" y="112" fill="#ffffff" font-family="'Hind Siliguri', sans-serif" font-weight="800" font-size="12" text-anchor="middle">১০০% গ্যারান্টি</text>
+  <text x="80" y="125" fill="#fef3c7" font-family="'Hind Siliguri', sans-serif" font-weight="600" font-size="9" text-anchor="middle">সেরা কনটেন্ট</text>
+</svg>

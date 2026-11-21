@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 48" fill="none">
+  <!-- bKash -->
+  <g transform="translate(0, 4)">
+    <rect width="90" height="40" rx="8" fill="#e2136e" />
+    <text x="45" y="25" fill="#ffffff" font-family="'Hind Siliguri', sans-serif" font-weight="700" font-size="15" text-anchor="middle">bKash</text>
+  </g>
+  <!-- Nagad -->
+  <g transform="translate(100, 4)">
+    <rect width="90" height="40" rx="8" fill="#f7941d" />
+    <text x="45" y="25" fill="#ffffff" font-family="'Hind Siliguri', sans-serif" font-weight="700" font-size="15" text-anchor="middle">Nagad</text>
+  </g>
+  <!-- Rocket -->
+  <g transform="translate(200, 4)">
+    <rect width="90" height="40" rx="8" fill="#8c3494" />
+    <text x="45" y="25" fill="#ffffff" font-family="'Hind Siliguri', sans-serif" font-weight="700" font-size="15" text-anchor="middle">Rocket</text>
+  </g>
+  <!-- Upay / Visa / Cards -->
+  <g transform="translate(300, 4)">
+    <rect width="115" height="40" rx="8" fill="#1e3a8a" />
+    <text x="57" y="25" fill="#ffffff" font-family="'Hind Siliguri', sans-serif" font-weight="700" font-size="14" text-anchor="middle">Cards / Upay</text>
+  </g>
+</svg>

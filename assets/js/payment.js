@@ -66,6 +66,11 @@ async function initSuccessPage() {
 
     const order = result.order;
 
+    const bookMockupEl = document.getElementById("receipt-book-mockup");
+    if (order.book_slug && bookMockupEl) {
+      bookMockupEl.src = `/assets/images/${order.book_slug}-mockup.webp`;
+    }
+
     // Fill Receipt
     if (orderIdEl) orderIdEl.textContent = order.id ? order.id.slice(0, 8) + "..." : "N/A";
     if (bookTitleEl) bookTitleEl.textContent = order.book_title || "নির্বাচিত ইবুক";

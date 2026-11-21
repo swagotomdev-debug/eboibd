@@ -55,13 +55,18 @@
             ✓
           </div>
           <h1 style="font-size: clamp(1.8rem, 4vw, 2.3rem); color: #166534; margin-bottom: 10px;">অভিনন্দন! আপনার পেমেন্ট সফল হয়েছে</h1>
-          <p style="font-size: 1.1rem; color: var(--text-muted); max-width: 580px; margin: 0 auto 28px auto;">
+          <p style="font-size: 1.1rem; color: var(--text-muted); max-width: 580px; margin: 0 auto 24px auto;">
             বইটি সফলভাবে সংগ্রহ করায় ধন্যবাদ। নিচের বাটন থেকে আপনার ইবুকটি সরাসরি PDF ফরম্যাটে ডাউনলোড করুন।
           </p>
 
+          <!-- Book Mockup Display -->
+          <div style="margin-bottom: 24px; display: flex; justify-content: center;">
+            <img id="receipt-book-mockup" src="/assets/images/bundle-hero.webp" alt="Purchased eBook" style="max-width: 140px; height: auto; filter: drop-shadow(0 8px 16px rgba(0,0,0,0.15)); border-radius: 8px;">
+          </div>
+
           <!-- Download Action Card -->
           <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: var(--radius-lg); padding: 28px 20px; max-width: 540px; margin: 0 auto 24px auto;">
-            <button id="btn-download-pdf" class="btn btn-primary btn-lg" style="font-size: 1.25rem; padding: 16px 36px;">
+            <button id="btn-download-pdf" class="btn btn-primary btn-lg" style="font-size: 1.25rem; padding: 16px 36px; box-shadow: 0 4px 15px rgba(22, 163, 74, 0.3); background: #16a34a; border-color: #16a34a;">
               📥 এখনই ইবুক ডাউনলোড করুন (PDF)
             </button>
             <div id="download-notice" style="margin-top: 14px; font-size: 0.88rem; color: var(--text-muted);">

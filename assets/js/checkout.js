@@ -15,17 +15,41 @@ function initCheckout() {
   const book = window.EBOI_CONFIG.books[slug] || window.EBOI_CONFIG.books["ai-income"];
 
   // Populate Order Summary
+  const summaryMockup = document.getElementById("summary-mockup");
   const summaryCover = document.getElementById("summary-cover");
   const summaryTitle = document.getElementById("summary-title");
   const summaryPages = document.getElementById("summary-pages");
   const summaryPrice = document.getElementById("summary-price");
+  const summaryOriginalPrice = document.getElementById("summary-original-price");
+  const summaryDiscount = document.getElementById("summary-discount");
   const submitBtnText = document.getElementById("submit-btn-price");
 
+  // Inside page preview thumbnails
+  const thumbP1 = document.getElementById("thumb-p1");
+  const thumbP2 = document.getElementById("thumb-p2");
+  const thumbP3 = document.getElementById("thumb-p3");
+  const thumbP4 = document.getElementById("thumb-p4");
+
+  if (summaryMockup) summaryMockup.src = book.mockupUrl;
   if (summaryCover) summaryCover.src = book.coverUrl;
   if (summaryTitle) summaryTitle.textContent = book.title;
   if (summaryPages) summaryPages.textContent = `${toBanglaNumber(book.pages)} পেজ PDF`;
   if (summaryPrice) summaryPrice.textContent = `৳${toBanglaNumber(book.price)}`;
   if (submitBtnText) submitBtnText.textContent = `৳${toBanglaNumber(book.price)}`;
+
+  const regularPrice = book.price * 2;
+  const discountVal = regularPrice - book.price;
+  if (summaryOriginalPrice) summaryOriginalPrice.textContent = `৳${toBanglaNumber(regularPrice)}`;
+  if (summaryDiscount) summaryDiscount.textContent = `-৳${toBanglaNumber(discountVal)}`;
+
+  if (thumbP1) thumbP1.src = `/assets/images/${slug}-page1.webp`;
+  if (thumbP2) thumbP2.src = `/assets/images/${slug}-page2.webp`;
+  if (thumbP3) thumbP3.src = `/assets/images/${slug}-page3.webp`;
+  if (thumbP4) thumbP4.src = `/assets/images/${slug}-page4.webp`;
+
+  if (book.themeColor) {
+    document.documentElement.style.setProperty("--theme-color", book.themeColor);
+  }
 
   // Form handling
   const form = document.getElementById("checkout-form");
