@@ -111,28 +111,55 @@ function initCheckout() {
 
     try {
       const config = window.EBOI_CONFIG;
-      const response = await fetch(`${config.functionsUrl}/create-payment`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "apikey": config.supabaseAnonKey,
-          "Authorization": `Bearer ${config.supabaseAnonKey}`
-        },
-        body: JSON.stringify({
-          slug: slug,
-          customer_name: name,
-          email: email,
-          phone: cleanPhone
-        })
-      });
+      const requestPayload = {
+        slug: slug,
+        customer_name: name,
+        email: email,
+        phone: cleanPhone
+      };
 
-      const data = await response.json();
+      let data = null;
+      let lastError = null;
 
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || "পেমেন্ট তৈরি করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।");
+      // 1. Try Vercel /api/create-payment first
+      try {
+        const res = await fetch("/api/create-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestPayload)
+        });
+        if (res.ok) {
+          data = await res.json();
+        }
+      } catch (e) {
+        lastError = e;
       }
 
-      // Redirect to payment gateway URL
+      // 2. If Vercel API didn't return success, try Supabase Edge Function
+      if (!data || !data.success) {
+        try {
+          const res = await fetch(`${config.functionsUrl}/create-payment`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "apikey": config.supabaseAnonKey,
+              "Authorization": `Bearer ${config.supabaseAnonKey}`
+            },
+            body: JSON.stringify(requestPayload)
+          });
+          if (res.ok) {
+            data = await res.json();
+          }
+        } catch (e) {
+          lastError = e;
+        }
+      }
+
+      if (!data || !data.success) {
+        throw new Error((data && data.error) || "পেমেন্ট গেটওয়েতে সংযোগ করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।");
+      }
+
+      // Redirect immediately to payment gateway URL (e.g. ZiniPay bKash/Nagad checkout)
       if (data.payment_url) {
         window.location.href = data.payment_url;
       } else {

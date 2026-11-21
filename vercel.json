@@ -1,24 +1,6 @@
 {
   "cleanUrls": true,
   "trailingSlash": false,
-  "rewrites": [
-    {
-      "source": "/api/verify-payment",
-      "destination": "https://aixhmugoxwtwenishcfe.supabase.co/functions/v1/verify-payment"
-    },
-    {
-      "source": "/api/create-payment",
-      "destination": "https://aixhmugoxwtwenishcfe.supabase.co/functions/v1/create-payment"
-    },
-    {
-      "source": "/api/download",
-      "destination": "https://aixhmugoxwtwenishcfe.supabase.co/functions/v1/download"
-    },
-    {
-      "source": "/api/submit-review",
-      "destination": "https://aixhmugoxwtwenishcfe.supabase.co/functions/v1/submit-review"
-    }
-  ],
   "headers": [
     {
       "source": "/assets/images/(.*)",

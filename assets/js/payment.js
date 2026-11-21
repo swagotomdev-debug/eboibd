@@ -44,24 +44,36 @@ async function initSuccessPage() {
 
   try {
     const config = window.EBOI_CONFIG;
-    // Call server-side verification
-    const response = await fetch(`${config.functionsUrl}/verify-payment`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "apikey": config.supabaseAnonKey,
-        "Authorization": `Bearer ${config.supabaseAnonKey}`
-      },
-      body: JSON.stringify({
-        order_id: orderId,
-        invoice_id: invoiceId
-      })
-    });
+    let result = null;
 
-    const result = await response.json();
+    // 1. Try Vercel /api/verify-payment first
+    try {
+      const res = await fetch("/api/verify-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order_id: orderId, invoice_id: invoiceId })
+      });
+      if (res.ok) result = await res.json();
+    } catch (_) {}
 
-    if (!response.ok || !result.success) {
-      throw new Error(result.error || "পেমেন্ট ভেরিফিকেশন ব্যর্থ হয়েছে।");
+    // 2. Fallback to Supabase Edge Function
+    if (!result || !result.success) {
+      try {
+        const res = await fetch(`${config.functionsUrl}/verify-payment`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "apikey": config.supabaseAnonKey,
+            "Authorization": `Bearer ${config.supabaseAnonKey}`
+          },
+          body: JSON.stringify({ order_id: orderId, invoice_id: invoiceId })
+        });
+        if (res.ok) result = await res.json();
+      } catch (_) {}
+    }
+
+    if (!result || !result.success) {
+      throw new Error((result && result.error) || "পেমেন্ট ভেরিফিকেশন ব্যর্থ হয়েছে।");
     }
 
     const order = result.order;

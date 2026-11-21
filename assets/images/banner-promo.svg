@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 120" fill="none">
+  <defs>
+    <linearGradient id="bannerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e1b4b" />
+      <stop offset="50%" stop-color="#312e81" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+    <linearGradient id="badgeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#e11d2e" />
+      <stop offset="100%" stop-color="#f59e0b" />
+    </linearGradient>
+  </defs>
+  
+  <rect width="800" height="120" rx="16" fill="url(#bannerGrad)" stroke="#4338ca" stroke-width="1.5" />
+  
+  <!-- Left Promo Badge -->
+  <g transform="translate(24, 28)">
+    <rect width="110" height="64" rx="10" fill="url(#badgeGrad)" />
+    <text x="55" y="28" fill="#ffffff" font-family="'Hind Siliguri', sans-serif" font-weight="800" font-size="12" text-anchor="middle">স্পেশাল ডিল</text>
+    <text x="55" y="52" fill="#ffffff" font-family="'Anek Bangla', sans-serif" font-weight="800" font-size="22" text-anchor="middle">৫০% ছাড়</text>
+  </g>
+  
+  <!-- Text Content -->
+  <text x="156" y="50" fill="#ffffff" font-family="'Anek Bangla', sans-serif" font-weight="800" font-size="20">২০২৬ এর বেস্টসেলার ডিজিটাল ক্যারিয়ার হ্যান্ডবুক</text>
+  <text x="156" y="78" fill="#cbd5e1" font-family="'Hind Siliguri', sans-serif" font-weight="600" font-size="14">⚡ পেমেন্ট নিশ্চিত করলেই ৫ সেকেন্ডে সরাসরি ডাউনলোড • আজীবন ফ্রি আপডেট</text>
+  <text x="156" y="98" fill="#fbbf24" font-family="'Hind Siliguri', sans-serif" font-weight="700" font-size="12">✔ বিকাশ • নগদ • রকেট • কার্ড সাপোর্টেড</text>
+
+  <!-- Right Floating Icon Graphic -->
+  <circle cx="730" cy="60" r="38" fill="#4f46e5" fill-opacity="0.2" />
+  <circle cx="730" cy="60" r="28" fill="#6366f1" fill-opacity="0.3" />
+  <text x="730" y="68" fill="#ffffff" font-size="26" text-anchor="middle">🚀</text>
+</svg>

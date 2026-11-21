@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 100" fill="none">
+  <defs>
+    <linearGradient id="trustGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#064e3b" />
+      <stop offset="100%" stop-color="#065f46" />
+    </linearGradient>
+  </defs>
+  
+  <rect width="800" height="100" rx="14" fill="url(#trustGrad)" stroke="#10b981" stroke-width="1.5" />
+  
+  <!-- Shield Icon -->
+  <g transform="translate(28, 22)">
+    <circle cx="28" cy="28" r="28" fill="#10b981" fill-opacity="0.25" />
+    <text x="28" y="38" fill="#ffffff" font-size="28" text-anchor="middle">🛡️</text>
+  </g>
+  
+  <text x="105" y="44" fill="#ffffff" font-family="'Anek Bangla', sans-serif" font-weight="800" font-size="19">১০০% মানসম্পন্ন ও প্র্যাকটিক্যাল লার্নিং এর অঙ্গীকার</text>
+  <text x="105" y="70" fill="#a7f3d0" font-family="'Hind Siliguri', sans-serif" font-weight="600" font-size="13">প্রযুক্তিগত কোনো ত্রুটিতে ফাইল না পেলে শতভাগ রিফান্ড গ্যারান্টি • ২৪/৭ হোয়াটসঅ্যাপ হেল্পলাইন</text>
+
+  <!-- Right Pill -->
+  <g transform="translate(630, 32)">
+    <rect width="140" height="36" rx="18" fill="#ffffff" />
+    <text x="70" y="23" fill="#065f46" font-family="'Hind Siliguri', sans-serif" font-weight="800" font-size="13" text-anchor="middle">✔ সুরক্ষিত ও নির্ভরযোগ্য</text>
+  </g>
+</svg>
