@@ -5,7 +5,7 @@
 window.EBOI_CONFIG = {
   // Supabase Credentials (auto-filled with your project ref: aixhmugoxwtwenishcfe)
   supabaseUrl: window.__SUPABASE_URL__ || "https://aixhmugoxwtwenishcfe.supabase.co",
-  supabaseAnonKey: window.__SUPABASE_ANON_KEY__ || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  supabaseAnonKey: window.__SUPABASE_ANON_KEY__ || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFpeGhtdWdveHd0d2VuaXNoY2ZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA0MjY1OTcsImV4cCI6MjEwNjAwMjU5N30.XheysYjfFxvZztK60Dcf8NkSP5TrAZYuC5G8-Ff96Pk",
 
   // Edge Functions Base URL (defaults to ${supabaseUrl}/functions/v1)
   get functionsUrl() {
