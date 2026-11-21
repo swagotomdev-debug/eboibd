@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 48" fill="none" height="40" width="auto">
+  <defs>
+    <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e11d2e" />
+      <stop offset="100%" stop-color="#6d3df0" />
+    </linearGradient>
+  </defs>
+  <!-- Rounded gradient square with Bangla letter ই -->
+  <rect x="2" y="4" width="40" height="40" rx="10" ry="10" fill="url(#logoGrad)" />
+  <text x="22" y="32" font-family="'Anek Bangla', 'Hind Siliguri', sans-serif" font-weight="700" font-size="28" fill="#ffffff" text-anchor="middle">ই</text>
+  
+  <!-- eboi in dark charcoal / #1e293b, followed by bd in red #e11d2e -->
+  <text x="52" y="33" font-family="'Anek Bangla', system-ui, -apple-system, sans-serif" font-weight="800" font-size="30" fill="#111827" letter-spacing="-0.5px">eboi<tspan fill="#e11d2e">bd</tspan></text>
+</svg>

@@ -1,0 +1,15 @@
+User-agent: *
+Disallow: /admin
+Disallow: /admin/
+Disallow: /checkout
+Disallow: /checkout/
+Disallow: /payment/
+
+Allow: /
+Allow: /books/
+Allow: /privacy
+Allow: /terms
+Allow: /refund
+Allow: /contact
+
+Sitemap: https://eboibd.site/sitemap.xml

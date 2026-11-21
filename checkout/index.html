@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>নিরাপদ চেকআউট | eboibd.site</title>
+  <meta name="robots" content="noindex, nofollow">
+  
+  <link rel="icon" type="image/svg+xml" href="/assets/images/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <link rel="stylesheet" href="/assets/css/style.css">
+  <link rel="stylesheet" href="/assets/css/animations.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="/" class="brand-logo">
+        <img src="/assets/images/logo.svg" alt="eboibd logo" class="brand-logo-img">
+      </a>
+      <div style="font-family: var(--font-heading); font-weight: 700; color: var(--text-muted); font-size: 0.95rem; display: flex; align-items: center; gap: 6px;">
+        <span>🔒</span>
+        <span>নিরাপদ SSL চেকআউট</span>
+      </div>
+    </div>
+  </header>
+
+  <main style="padding: 40px 0 80px 0;">
+    <div class="container container-narrow">
+      
+      <div class="section-header" style="margin-bottom: 30px;">
+        <div class="pill-badge">
+          <span>অর্ডার সম্পন্নকরণ</span>
+        </div>
+        <h1 style="font-size: clamp(1.8rem, 4vw, 2.3rem); margin-bottom: 8px;">আপনার তথ্য <span class="theme-highlight">প্রদান করুন</span></h1>
+        <p class="section-subtitle">পেমেন্টের পর সাথে সাথে এই পেজে ডাউনলোড লিংক দেওয়া হবে এবং ইমেইলেও পাঠানো হবে।</p>
+      </div>
+
+      <!-- Checkout Container -->
+      <div style="display: grid; grid-template-columns: 1fr; gap: 32px;" class="checkout-layout">
+        
+        <!-- Left: Form -->
+        <div style="background: var(--bg-card); border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 32px 24px; box-shadow: var(--shadow-sm);">
+          
+          <div id="checkout-alert" style="display: none; background: #fee2e2; border: 1px solid #f87171; color: #b91c1c; padding: 12px 16px; border-radius: var(--radius-sm); margin-bottom: 20px; font-weight: 600; font-size: 0.95rem;"></div>
+
+          <form id="checkout-form">
+            
+            <div class="form-group" style="margin-bottom: 20px;">
+              <label for="customer_name" class="form-label">আপনার পূর্ণ নাম *</label>
+              <input type="text" id="customer_name" class="form-control" placeholder="যেমন: মো: আরিফুল ইসলাম" required autocomplete="name">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 20px;">
+              <label for="customer_email" class="form-label">আপনার ইমেইল অ্যাড্রেস *</label>
+              <input type="email" id="customer_email" class="form-control" placeholder="যেমন: yourname@gmail.com" required autocomplete="email">
+              <div class="form-hint">এই ইমেইলে আপনার বইয়ের ব্যাকআপ ডাউনলোড কপি পাঠানো হবে।</div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 24px;">
+              <label for="customer_phone" class="form-label">মোবাইল নম্বর (বিকাশ / নগদ) *</label>
+              <input type="tel" id="customer_phone" class="form-control" placeholder="যেমন: 01712345678" required autocomplete="tel" maxlength="11">
+              <div id="phone-error" style="color: #dc2626; font-size: 0.85rem; margin-top: 5px; display: none; font-weight: 600;"></div>
+              <div class="form-hint">১১ ডিজিটের নম্বর লিখুন (01XXXXXXXXX)।</div>
+            </div>
+
+            <div style="margin-bottom: 24px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: var(--radius-md); padding: 16px;">
+              <div style="font-weight: 700; font-size: 0.95rem; margin-bottom: 8px; color: var(--text-main);">পেমেন্ট পদ্ধতি:</div>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <span class="payment-pill" style="background:#e11d2e; color:#fff;">bKash</span>
+                <span class="payment-pill" style="background:#ea580c; color:#fff;">Nagad</span>
+                <span class="payment-pill" style="background:#7c3aed; color:#fff;">Rocket</span>
+                <span class="payment-pill" style="background:#0284c7; color:#fff;">Upay / Card</span>
+              </div>
+              <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 8px;">পরের ধাপে আপনি বিকাশ, নগদ বা রকেট নির্বাচন করে স্বয়ংক্রিয় পেমেন্ট সম্পন্ন করতে পারবেন।</p>
+            </div>
+
+            <button type="submit" id="submit-btn" class="btn btn-primary btn-block btn-lg">
+              <span>নিরাপদে পেমেন্ট করুন · <span id="submit-btn-price">৳২৯৯</span></span>
+            </button>
+
+            <div style="text-align: center; margin-top: 16px; font-size: 0.85rem; color: var(--text-muted); display: flex; align-items: center; justify-content: center; gap: 6px;">
+              <span>🔒</span>
+              <span>বাংলাদেশ ব্যাংক অনুমোদিত গেটওয়ে দিয়ে পেমেন্ট প্রসেস করা হবে</span>
+            </div>
+
+          </form>
+        </div>
+
+        <!-- Right: Order Summary Card -->
+        <div>
+          <div style="background: var(--bg-card); border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 28px 24px; box-shadow: var(--shadow-sm); position: sticky; top: 96px;">
+            <h3 style="font-size: 1.25rem; margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid var(--border-light);">অর্ডার সারাংশ</h3>
+
+            <div style="display: flex; gap: 16px; align-items: center; margin-bottom: 20px;">
+              <img id="summary-cover" src="/assets/images/ai-income-cover.webp" alt="কভার" style="width: 72px; height: auto; border-radius: 6px; box-shadow: var(--shadow-sm);">
+              <div>
+                <h4 id="summary-title" style="font-size: 1.05rem; line-height: 1.35; margin-bottom: 4px;">AI দিয়ে ঘরে বসে আয়: ৩০ দিনে প্রথম ইনকাম</h4>
+                <div id="summary-pages" style="font-size: 0.85rem; color: var(--text-muted);">২৯ পেজ PDF হ্যান্ডবুক</div>
+              </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 10px; border-top: 1px dashed var(--border-light); border-bottom: 1px dashed var(--border-light); padding: 16px 0; margin-bottom: 16px;">
+              <div style="display: flex; justify-content: space-between; font-size: 0.95rem;">
+                <span style="color: var(--text-muted);">ইবুক মূল্য:</span>
+                <span id="summary-price" style="font-weight: 700;">৳২৯৯</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.95rem;">
+                <span style="color: var(--text-muted);">ডেলিভারি চার্জ:</span>
+                <span style="color: #059669; font-weight: 700;">ফ্রি (সরাসরি ডাউনলোড)</span>
+              </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 1.25rem; font-weight: 800; margin-bottom: 20px;">
+              <span>সর্বমোট:</span>
+              <span id="summary-total" style="color: var(--theme-color);">৳২৯৯</span>
+            </div>
+
+            <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: var(--radius-sm); padding: 12px; font-size: 0.85rem; color: #065f46; display: flex; gap: 8px;">
+              <span>✓</span>
+              <div>পেমেন্ট সফল হওয়ার সাথে সাথে ডাউনলোড লিংক আনলক হবে। কোনো অপেক্ষা করতে হবে না।</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <style>
+    @media (min-width: 768px) {
+      .checkout-layout {
+        grid-template-columns: 1.4fr 1fr !important;
+      }
+    }
+  </style>
+
+  <script src="/assets/js/config.js"></script>
+  <script src="/assets/js/main.js"></script>
+  <script src="/assets/js/checkout.js"></script>
+</body>
+</html>

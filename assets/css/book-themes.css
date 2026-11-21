@@ -1,0 +1,64 @@
+/* ==========================================================================
+   eboibd.site - Book Specific Color Themes
+   1. ai-income: red #e11d2e
+   2. freelancer-payment: blue #2457e6
+   3. facebook-business: orange #f26a12
+   4. ai-video-editing: purple #6d3df0
+   ========================================================================== */
+
+/* 1. AI Income (Red Theme) */
+[data-theme="ai-income"] {
+  --theme-color: #e11d2e;
+  --theme-light: rgba(225, 29, 46, 0.08);
+  --theme-border: rgba(225, 29, 46, 0.2);
+  --theme-gradient: linear-gradient(135deg, #e11d2e 0%, #b31020 100%);
+  --shadow-glow: 0 0 30px rgba(225, 29, 46, 0.25);
+}
+
+/* 2. Freelancer Payment (Blue Theme) */
+[data-theme="freelancer-payment"] {
+  --theme-color: #2457e6;
+  --theme-light: rgba(36, 87, 230, 0.08);
+  --theme-border: rgba(36, 87, 230, 0.2);
+  --theme-gradient: linear-gradient(135deg, #2457e6 0%, #1539a8 100%);
+  --shadow-glow: 0 0 30px rgba(36, 87, 230, 0.25);
+}
+
+[data-theme="freelancer-payment"] .btn-primary {
+  box-shadow: 0 4px 14px rgba(36, 87, 230, 0.25);
+}
+[data-theme="freelancer-payment"] .btn-primary:hover {
+  box-shadow: 0 8px 24px rgba(36, 87, 230, 0.38);
+}
+
+/* 3. Facebook Business (Orange Theme) */
+[data-theme="facebook-business"] {
+  --theme-color: #f26a12;
+  --theme-light: rgba(242, 106, 18, 0.08);
+  --theme-border: rgba(242, 106, 18, 0.2);
+  --theme-gradient: linear-gradient(135deg, #f26a12 0%, #bf4d04 100%);
+  --shadow-glow: 0 0 30px rgba(242, 106, 18, 0.25);
+}
+
+[data-theme="facebook-business"] .btn-primary {
+  box-shadow: 0 4px 14px rgba(242, 106, 18, 0.25);
+}
+[data-theme="facebook-business"] .btn-primary:hover {
+  box-shadow: 0 8px 24px rgba(242, 106, 18, 0.38);
+}
+
+/* 4. AI Video Editing (Purple Theme) */
+[data-theme="ai-video-editing"] {
+  --theme-color: #6d3df0;
+  --theme-light: rgba(109, 61, 240, 0.08);
+  --theme-border: rgba(109, 61, 240, 0.2);
+  --theme-gradient: linear-gradient(135deg, #6d3df0 0%, #4c22b8 100%);
+  --shadow-glow: 0 0 30px rgba(109, 61, 240, 0.25);
+}
+
+[data-theme="ai-video-editing"] .btn-primary {
+  box-shadow: 0 4px 14px rgba(109, 61, 240, 0.25);
+}
+[data-theme="ai-video-editing"] .btn-primary:hover {
+  box-shadow: 0 8px 24px rgba(109, 61, 240, 0.38);
+}
