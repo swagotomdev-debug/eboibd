@@ -23,7 +23,7 @@ export default async function handler(req, res) {
 
   if (req.method === "GET") {
     try {
-      const sRes = await fetch(`${supabaseUrl}/rest/v1/settings?select=key,value`, {
+      const sRes = await fetch(`${supabaseUrl}/rest/v1/site_settings?select=key,value`, {
         headers: {
           "apikey": supabaseAnonKey,
           "Authorization": `Bearer ${supabaseAnonKey}`
@@ -33,9 +33,31 @@ export default async function handler(req, res) {
         const rows = await sRes.json();
         const settings = { ...defaultSettings };
         if (Array.isArray(rows)) {
-          rows.forEach((r) => { settings[r.key] = r.value; });
+          rows.forEach((r) => { if (r.key) settings[r.key] = r.value; });
         }
         return res.status(200).json({ success: true, settings });
+      }
+    } catch (_) {}
+
+    // Fallback query to settings if site_settings not found
+    try {
+      const fallbackRes = await fetch(`${supabaseUrl}/rest/v1/settings?select=*&limit=1`, {
+        headers: {
+          "apikey": supabaseAnonKey,
+          "Authorization": `Bearer ${supabaseAnonKey}`
+        }
+      });
+      if (fallbackRes.ok) {
+        const rows = await fallbackRes.json();
+        if (rows && rows[0] && rows[0].countdown_end_date) {
+          return res.status(200).json({
+            success: true,
+            settings: {
+              ...defaultSettings,
+              offer_ends_at: rows[0].countdown_end_date
+            }
+          });
+        }
       }
     } catch (_) {}
 
@@ -46,7 +68,7 @@ export default async function handler(req, res) {
     try {
       const updates = req.body || {};
       for (const [key, value] of Object.entries(updates)) {
-        await fetch(`${supabaseUrl}/rest/v1/settings`, {
+        await fetch(`${supabaseUrl}/rest/v1/site_settings`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

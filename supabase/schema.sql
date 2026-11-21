@@ -322,24 +322,25 @@ create policy "Public can view approved reviews" on public.reviews for select us
 drop policy if exists "Admins full access to reviews" on public.reviews;
 create policy "Admins full access to reviews" on public.reviews for all using (public.is_admin());
 
--- Settings Table (Offer countdown & banner text)
-create table if not exists public.settings (
+-- Site Settings Table (Offer countdown & banner text)
+create table if not exists public.site_settings (
   key text primary key,
   value text not null,
   updated_at timestamptz not null default now()
 );
-alter table public.settings enable row level security;
-drop policy if exists "Public can view settings" on public.settings;
-create policy "Public can view settings" on public.settings for select using (true);
-drop policy if exists "Admins can manage settings" on public.settings;
-create policy "Admins can manage settings" on public.settings for all using (public.is_admin());
+alter table public.site_settings enable row level security;
+drop policy if exists "Public can view site settings" on public.site_settings;
+create policy "Public can view site settings" on public.site_settings for select using (true);
+drop policy if exists "Admins can manage site settings" on public.site_settings;
+create policy "Admins can manage site settings" on public.site_settings for all using (public.is_admin());
 
-insert into public.settings (key, value)
+insert into public.site_settings (key, value)
 values 
   ('combo_active', 'true'),
   ('banner_text', '৪টা বই একসাথে মেগা কম্বো মাত্র ৳১৪৯! সীমিত সময়ের বিশেষ অফার'),
   ('offer_ends_at', '')
-on conflict (key) do nothing;
+on conflict (key) do update set
+  value = excluded.value;
 
 -- Private Storage Bucket for Review Proofs
 insert into storage.buckets (id, name, public)
