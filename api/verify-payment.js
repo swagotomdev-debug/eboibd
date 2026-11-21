@@ -18,7 +18,7 @@ export default async function handler(req, res) {
     const supabaseUrl = process.env.SUPABASE_URL || "https://aixhmugoxwtwenishcfe.supabase.co";
     const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFpeGhtdWdveHd0d2VuaXNoY2ZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA0MjY1OTcsImV4cCI6MjEwNjAwMjU5N30.XheysYjfFxvZztK60Dcf8NkSP5TrAZYuC5G8-Ff96Pk";
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseAnonKey;
-    const zinipayApiKey = process.env.ZINIPAY_API_KEY;
+    const zinipayApiKey = process.env.ZINIPAY_API_KEY || "fcdf700f3ac1fbd7ff6718b13cbe20d4373dea8c6a20f064";
 
     if (!orderId && !invoiceId) {
       return res.status(400).json({ success: false, error: "Missing order_id or invoice_id" });

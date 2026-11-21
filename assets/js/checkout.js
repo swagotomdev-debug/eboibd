@@ -111,21 +111,76 @@ function initCheckout() {
 
     try {
       const config = window.EBOI_CONFIG;
-      const requestPayload = {
-        slug: slug,
-        customer_name: name,
-        email: email,
-        phone: cleanPhone
-      };
+      const orderId = "ord_" + Date.now();
 
+      // 1. Direct ZiniPay Gateway API (Highest Priority - Fast & Reliable)
+      if (config.zinipayApiKey) {
+        // Record pending order in Supabase
+        try {
+          fetch(`${config.supabaseUrl}/rest/v1/orders`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "apikey": config.supabaseAnonKey,
+              "Authorization": `Bearer ${config.supabaseAnonKey}`,
+              "Prefer": "return=minimal"
+            },
+            body: JSON.stringify({
+              customer_name: name,
+              email: email,
+              phone: cleanPhone,
+              amount_bdt: Number(book.price),
+              status: "pending",
+              gateway_ref: orderId
+            })
+          }).catch(() => {});
+        } catch (_) {}
+
+        // Call ZiniPay Invoice API directly
+        const ziniRes = await fetch("https://api.zinipay.com/v1/payment/create", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "zini-api-key": config.zinipayApiKey
+          },
+          body: JSON.stringify({
+            amount: Number(book.price),
+            redirect_url: `https://eboibd.site/success.html?order=${orderId}`,
+            cancel_url: `https://eboibd.site/failed.html?order=${orderId}`,
+            webhook_url: `https://eboibd.site/api/verify-payment?order=${orderId}`,
+            cus_name: name,
+            cus_email: email,
+            metadata: {
+              order_id: orderId,
+              phone: cleanPhone,
+              slug: slug
+            }
+          })
+        });
+
+        const ziniData = await ziniRes.json();
+
+        if (ziniRes.ok && ziniData.status && ziniData.payment_url) {
+          // Instantly redirect customer to ZiniPay Payment Gateway (bKash / Nagad / Rocket)
+          window.location.href = ziniData.payment_url;
+          return;
+        } else if (ziniData && ziniData.message) {
+          throw new Error(ziniData.message);
+        }
+      }
+
+      // 2. Fallback to Serverless /api/create-payment
       let paymentUrl = null;
-
-      // 1. Try Vercel Serverless /api/create-payment
       try {
         const res = await fetch("/api/create-payment", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(requestPayload)
+          body: JSON.stringify({
+            slug: slug,
+            customer_name: name,
+            email: email,
+            phone: cleanPhone
+          })
         });
         if (res.ok) {
           const data = await res.json();
@@ -135,71 +190,19 @@ function initCheckout() {
         }
       } catch (_) {}
 
-      // 2. Try Supabase Edge Function create-payment
-      if (!paymentUrl && config.functionsUrl) {
-        try {
-          const res = await fetch(`${config.functionsUrl}/create-payment`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "apikey": config.supabaseAnonKey,
-              "Authorization": `Bearer ${config.supabaseAnonKey}`
-            },
-            body: JSON.stringify(requestPayload)
-          });
-          if (res.ok) {
-            const data = await res.json();
-            if (data && data.success && data.payment_url) {
-              paymentUrl = data.payment_url;
-            }
-          }
-        } catch (_) {}
-      }
-
-      // 3. Direct ZiniPay API Call (if zinipayApiKey is present in config)
-      if (!paymentUrl && config.zinipayApiKey) {
-        try {
-          const orderId = "ord_" + Date.now();
-          const ziniRes = await fetch("https://api.zinipay.com/v1/payment/create", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "zini-api-key": config.zinipayApiKey
-            },
-            body: JSON.stringify({
-              amount: Number(book.price),
-              redirect_url: `https://eboibd.site/success.html?order=${orderId}`,
-              cancel_url: `https://eboibd.site/failed.html?order=${orderId}`,
-              webhook_url: `https://eboibd.site/api/verify-payment?order=${orderId}`,
-              cus_name: name,
-              cus_email: email,
-              metadata: { order_id: orderId, phone: cleanPhone, slug: slug }
-            })
-          });
-          if (ziniRes.ok) {
-            const ziniData = await ziniRes.json();
-            if (ziniData && ziniData.status && ziniData.payment_url) {
-              paymentUrl = ziniData.payment_url;
-            }
-          }
-        } catch (_) {}
-      }
-
-      // 4. If on Localhost or Testing Environment without live API key, provide seamless test checkout
-      const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-      if (!paymentUrl && isLocal) {
-        // Create demo order ID and redirect to success page to test complete download flow
-        const demoOrderId = "demo_" + Date.now();
-        window.location.href = `/success.html?order=${demoOrderId}&slug=${slug}&name=${encodeURIComponent(name)}`;
+      if (paymentUrl) {
+        window.location.href = paymentUrl;
         return;
       }
 
-      if (paymentUrl) {
-        // Redirect directly to ZiniPay Gateway
-        window.location.href = paymentUrl;
-      } else {
-        throw new Error("পেমেন্ট গেটওয়েতে সংযোগ করতে সমস্যা হয়েছে। আপনার ZiniPay API Key টি নিশ্চিত করুন।");
+      // 3. Fallback for Local Testing
+      const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+      if (isLocal) {
+        window.location.href = `/success.html?order=demo_${Date.now()}&slug=${slug}&name=${encodeURIComponent(name)}`;
+        return;
       }
+
+      throw new Error("পেমেন্ট গেটওয়েতে সংযোগ করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।");
     } catch (err) {
       console.error("Payment error:", err);
       showAlert(err.message || "পেমেন্ট সম্পন্ন করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।");
