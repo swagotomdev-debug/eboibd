@@ -2,10 +2,11 @@
 // Connects checkout form directly to ZiniPay Payment Gateway & Supabase
 
 const BOOKS = {
-  "ai-income": { price: 99, title: "AI দিয়ে ঘরে বসে আয়: ৩০ দিনে প্রথম ইনকাম" },
-  "freelancer-payment": { price: 99, title: "ফ্রিল্যান্সারের টাকা দেশে আনার পুরো গাইড ২০২৬" },
-  "facebook-business": { price: 99, title: "ফেসবুক পেজ থেকে ব্যবসা: শূন্য থেকে প্রথম ১০০ অর্ডার" },
-  "ai-video-editing": { price: 99, title: "AI দিয়ে ভিডিও এডিটিং: প্রম্পট ও স্কিল" },
+  "ai-income": { price: 299, title: "AI দিয়ে ঘরে বসে আয়: ৩০ দিনে প্রথম ইনকাম" },
+  "freelancer-payment": { price: 249, title: "ফ্রিল্যান্সারের টাকা দেশে আনার পুরো গাইড ২০২৬" },
+  "facebook-business": { price: 349, title: "ফেসবুক পেজ থেকে ব্যবসা: শূন্য থেকে প্রথম ১০০ অর্ডার" },
+  "ai-video-editing": { price: 299, title: "AI দিয়ে ভিডিও এডিটিং: প্রম্পট ও স্কিল" },
+  "combo-all-4": { price: 149, title: "৪টা বইয়ের কম্বো বান্ডেল", is_bundle: true }
 };
 
 export default async function handler(req, res) {
@@ -29,17 +30,20 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, error: "সকল তথ্য সঠিকভাবে পূরণ করুন।" });
     }
 
-    const book = BOOKS[slug] || BOOKS["ai-income"];
+    const fallbackBook = BOOKS[slug] || BOOKS["combo-all-4"];
     const supabaseUrl = process.env.SUPABASE_URL || "https://aixhmugoxwtwenishcfe.supabase.co";
     const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFpeGhtdWdveHd0d2VuaXNoY2ZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA0MjY1OTcsImV4cCI6MjEwNjAwMjU5N30.XheysYjfFxvZztK60Dcf8NkSP5TrAZYuC5G8-Ff96Pk";
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseAnonKey;
     const zinipayApiKey = process.env.ZINIPAY_API_KEY || "fcdf700f3ac1fbd7ff6718b13cbe20d4373dea8c6a20f064";
     const siteUrl = process.env.SITE_URL || "https://eboibd.site";
 
-    // 1. Get or find book_id from Supabase
+    // 1. Read real price and book_id directly from Supabase database
     let bookId = null;
+    let chargedPrice = fallbackBook.price;
+    let bookTitle = fallbackBook.title;
+
     try {
-      const bookRes = await fetch(`${supabaseUrl}/rest/v1/books?slug=eq.${slug}&select=id,price_bdt`, {
+      const bookRes = await fetch(`${supabaseUrl}/rest/v1/books?slug=eq.${slug}&select=id,title,price_bdt,sale_price_bdt,sale_ends_at,is_bundle`, {
         headers: {
           "apikey": supabaseServiceKey,
           "Authorization": `Bearer ${supabaseServiceKey}`,
@@ -48,7 +52,16 @@ export default async function handler(req, res) {
       if (bookRes.ok) {
         const booksData = await bookRes.json();
         if (booksData && booksData[0]) {
-          bookId = booksData[0].id;
+          const dbBook = booksData[0];
+          bookId = dbBook.id;
+          bookTitle = dbBook.title || fallbackBook.title;
+          
+          // Check for active sale price
+          if (dbBook.sale_price_bdt && (!dbBook.sale_ends_at || new Date(dbBook.sale_ends_at) > new Date())) {
+            chargedPrice = Number(dbBook.sale_price_bdt);
+          } else if (dbBook.price_bdt) {
+            chargedPrice = Number(dbBook.price_bdt);
+          }
         }
       }
     } catch (e) {
@@ -60,8 +73,9 @@ export default async function handler(req, res) {
       customer_name: customer_name.trim(),
       email: email.trim().toLowerCase(),
       phone: phone.trim(),
-      amount_bdt: book.price,
-      status: "pending"
+      amount_bdt: chargedPrice,
+      status: "pending",
+      source: "online"
     };
     if (bookId) orderPayload.book_id = bookId;
 
@@ -90,7 +104,7 @@ export default async function handler(req, res) {
     // 3. Call ZiniPay Payment Creation API
     if (zinipayApiKey) {
       const ziniPayload = {
-        amount: Number(book.price),
+        amount: Number(chargedPrice),
         redirect_url: `${siteUrl}/success.html?order=${orderId}`,
         cancel_url: `${siteUrl}/failed.html?order=${orderId}`,
         webhook_url: `${siteUrl}/api/verify-payment?order=${orderId}`,
@@ -99,7 +113,8 @@ export default async function handler(req, res) {
         metadata: {
           order_id: orderId,
           phone: phone.trim(),
-          slug: slug
+          slug: slug,
+          book_title: bookTitle
         }
       };
 
@@ -145,13 +160,11 @@ export default async function handler(req, res) {
       }
     }
 
-    // Fallback: If ZINIPAY_API_KEY is not yet entered in Vercel environment
-    // provide development redirect so testing works seamlessly
+    // Fallback: If ZINIPAY_API_KEY is not yet entered
     return res.status(200).json({
       success: true,
       payment_url: `${siteUrl}/success.html?order=${orderId}`,
-      order_id: orderId,
-      notice: "Dev Mode: Set ZINIPAY_API_KEY in Vercel environment to enable live ZiniPay payment"
+      order_id: orderId
     });
 
   } catch (error) {

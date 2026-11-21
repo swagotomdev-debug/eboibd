@@ -122,9 +122,52 @@ async function initSuccessPage() {
     if (loadingEl) loadingEl.style.display = "none";
     if (contentEl) contentEl.style.display = "block";
 
-    // Setup Download Button
-    if (downloadBtn) {
-      downloadBtn.addEventListener("click", () => handleDownload(order.id, downloadBtn, downloadNotice));
+    const isBundle = order.is_bundle || order.book_slug === "combo-all-4" || (order.amount_bdt && Number(order.amount_bdt) === 149);
+
+    const singleDownloadBox = document.getElementById("single-download-box");
+    const bundleDownloadsBox = document.getElementById("bundle-downloads-box");
+    const bundleGrid = document.getElementById("bundle-books-grid");
+
+    if (isBundle && bundleDownloadsBox && bundleGrid) {
+      if (singleDownloadBox) singleDownloadBox.style.display = "none";
+      bundleDownloadsBox.style.display = "block";
+      bundleGrid.innerHTML = "";
+
+      const bundleList = (result.order && result.order.bundle_books) || [
+        { slug: "ai-income", title: "AI দিয়ে ঘরে বসে আয়: ৩০ দিনে প্রথম ইনকাম", mockupUrl: "/assets/images/ai-income-mockup.webp", pages: 28 },
+        { slug: "freelancer-payment", title: "ফ্রিল্যান্সারের টাকা দেশে আনার পুরো গাইড ২০২৬", mockupUrl: "/assets/images/freelancer-payment-mockup.webp", pages: 24 },
+        { slug: "facebook-business", title: "ফেসবুক পেজ থেকে ব্যবসা: শূন্য থেকে প্রথম ১০০ অর্ডার", mockupUrl: "/assets/images/facebook-business-mockup.webp", pages: 32 },
+        { slug: "ai-video-editing", title: "AI দিয়ে ভিডিও এডিটিং: প্রম্পট ও স্কিল", mockupUrl: "/assets/images/ai-video-editing-mockup.webp", pages: 30 }
+      ];
+
+      bundleList.forEach((b, idx) => {
+        const item = document.createElement("div");
+        item.style.cssText = "display: flex; align-items: center; justify-content: space-between; gap: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 18px; flex-wrap: wrap;";
+        item.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <img src="${b.mockupUrl || `/assets/images/${b.slug}-mockup.webp`}" alt="${b.title}" style="width: 50px; height: auto; border-radius: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
+            <div>
+              <div style="font-weight: 700; color: #1e293b; font-size: 0.98rem;">${idx + 1}. ${b.title}</div>
+              <div style="font-size: 0.82rem; color: #64748b; margin-top: 2px;">PDF ফরম্যাট · মোবাইল ও কম্পিউটারে পড়ার উপযোগী</div>
+            </div>
+          </div>
+          <div>
+            <button class="btn btn-primary btn-bundle-dl" data-slug="${b.slug}" style="padding: 9px 18px; font-size: 0.92rem; background: #16a34a; border-color: #16a34a; border-radius: 6px; font-weight: 700;">
+              📥 ডাউনলোড (PDF)
+            </button>
+          </div>
+        `;
+        const btn = item.querySelector(".btn-bundle-dl");
+        btn.addEventListener("click", () => handleDownload(order.id, btn, null, b.slug));
+        bundleGrid.appendChild(item);
+      });
+    } else {
+      if (singleDownloadBox) singleDownloadBox.style.display = "block";
+      if (bundleDownloadsBox) bundleDownloadsBox.style.display = "none";
+      // Setup Download Button
+      if (downloadBtn) {
+        downloadBtn.addEventListener("click", () => handleDownload(order.id, downloadBtn, downloadNotice, order.book_slug));
+      }
     }
 
     // Setup Review Form
@@ -143,39 +186,55 @@ async function initSuccessPage() {
 /**
  * Handle Download: calls Edge Function to get signed URL
  */
-async function handleDownload(orderId, btn, noticeEl) {
+async function handleDownload(orderId, btn, noticeEl, bookSlug) {
   btn.disabled = true;
   const originalText = btn.innerHTML;
-  btn.innerHTML = `<span class="animate-spin">⏳</span> ডাউনলোড লিংক প্রস্তুত হচ্ছে...`;
+  btn.innerHTML = `<span class="animate-spin">⏳</span> ডাউনলোড হচ্ছে...`;
 
   try {
-    const config = window.EBOI_CONFIG;
-    const res = await fetch(`${config.functionsUrl}/download`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "apikey": config.supabaseAnonKey,
-        "Authorization": `Bearer ${config.supabaseAnonKey}`
-      },
-      body: JSON.stringify({ order_id: orderId })
-    });
+    const config = window.EBOI_CONFIG || {};
+    let data = null;
 
-    const data = await res.json();
+    // 1. Try Vercel Serverless /api/download first
+    try {
+      const res = await fetch("/api/download", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order_id: orderId, book_slug: bookSlug })
+      });
+      if (res.ok) data = await res.json();
+    } catch (_) {}
 
-    if (!res.ok || !data.success) {
-      throw new Error(data.error || "ডাউনলোড লিংক তৈরি করা যায়নি।");
+    // 2. Fallback to Supabase Edge Function
+    if (!data || !data.success) {
+      try {
+        const res = await fetch(`${config.functionsUrl}/download`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "apikey": config.supabaseAnonKey,
+            "Authorization": `Bearer ${config.supabaseAnonKey}`
+          },
+          body: JSON.stringify({ order_id: orderId, book_slug: bookSlug })
+        });
+        if (res.ok) data = await res.json();
+      } catch (_) {}
+    }
+
+    if (!data || !data.success) {
+      throw new Error((data && data.error) || "ডাউনলোড লিংক তৈরি করা যায়নি।");
     }
 
     // Trigger download
     const link = document.createElement("a");
     link.href = data.download_url;
-    link.download = data.filename || "ebook.pdf";
+    link.download = data.filename || `${bookSlug || "ebook"}.pdf`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 
     btn.disabled = false;
-    btn.innerHTML = `📥 পুনরায় ডাউনলোড করুন`;
+    btn.innerHTML = `✓ ডাউনলোড সম্পন্ন`;
 
     if (noticeEl) {
       noticeEl.innerHTML = `

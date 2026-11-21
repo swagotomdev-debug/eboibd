@@ -214,7 +214,7 @@ values
   'কোনো অবাস্তব স্বপ্ন বা মিথ্যা আশ্বাস নয়। এই বইটিতে রয়েছে প্রতিদিনের সুনির্দিষ্ট অ্যাকশন প্ল্যান, টেস্টেড প্রম্পট এবং ফ্রিল্যান্সিং সার্ভিস বিক্রির দেশীয় ও আন্তর্জাতিক গাইডলাইন।',
   array['৩০ দিনের অ্যাকশন প্ল্যান', '২০+ টেস্টেড প্রম্পট', '৫টি মনেটাইজেবল AI সার্ভিস', 'পোর্টফোলিও টেমপ্লেট'],
   29,
-  99.00,
+  299.00,
   '/assets/images/ai-income-cover.webp',
   'ebooks/ai-income.pdf',
   true
@@ -226,7 +226,7 @@ values
   'কষ্টের উপার্জিত ডলার যাতে অতিরিক্ত হিডেন চার্জ বা খারাপ এক্সচেঞ্জ রেটে নষ্ট না হয়, তার নিখুঁত ব্যাংকিং গাইড। সরকারি ২.৫% প্রণোদনা ও ট্যাক্স নিয়মাবলীর পূর্ণ বিবরণ।',
   array['সর্বনিম্ন ফি মেথড', 'Wise ও Payoneer গাইড', 'সরকারি ২.৫% প্রণোদনা', 'ট্যাক্স এক্সাম্পশন ক্লিয়ারেন্স'],
   24,
-  99.00,
+  249.00,
   '/assets/images/freelancer-payment-cover.webp',
   'ebooks/freelancer-payment.pdf',
   true
@@ -238,7 +238,7 @@ values
   'বুস্টিংয়ে টাকা না ঢেলে অর্গানিক রিলস, সঠিক কন্টেন্ট ক্যালেন্ডার এবং ইনবক্সে কাস্টমার কনভার্সন স্ক্রিপ্ট দিয়ে প্রথম ১০০টি সফল অর্ডার সম্পন্ন করার কার্যকর দেশীয় ফর্মুলা।',
   array['অর্গানিক ভাইরাল রিলস', 'ইনবক্স সেলস ক্লোজিং স্ক্রিপ্ট', 'কুরিয়ার রিটার্ন কমানোর টেকনিক', '১০০ কাস্টমার চেকলিস্ট'],
   23,
-  99.00,
+  349.00,
   '/assets/images/facebook-business-cover.webp',
   'ebooks/facebook-business.pdf',
   true
@@ -250,9 +250,21 @@ values
   'ভারী পিসির ঝামেলা ছাড়া মোবাইল ও ল্যাপটপে AI ভয়েস, সিনেমাটিক ক্লিপ ও আকর্ষণীয় সাবটাইটেল দিয়ে ফেসলেস চ্যানেল ও সোশ্যাল মিডিয়ার জন্য ভিডিও বানানোর মাস্টারক্লাস।',
   array['CapCut সিক্রেট ফিচার', 'ElevenLabs ভয়েস ক্লোনিং', 'Runway সিনেমাটিক ক্লিপ', 'ইউটিউব মনেটাইজেশন ফ্রেমওয়ার্ক'],
   28,
-  99.00,
+  299.00,
   '/assets/images/ai-video-editing-cover.webp',
   'ebooks/ai-video-editing.pdf',
+  true
+),
+(
+  'combo-all-4',
+  '৪টা বইয়ের মেগা কম্বো',
+  '৪টি সম্পূর্ণ ইবুক একসাথে: AI ইনকাম, ফ্রিল্যান্সার পেমেন্ট, ফেসবুক বিজনেস এবং AI ভিডিও এডিটিং।',
+  'সবগুলো ক্যারিয়ার ও ইনকাম হ্যান্ডবুক একসাথে মেগা অফারে। সর্বমোট ১১৪ পৃষ্ঠা ও চারটি সম্পূর্ণ প্র্যাকটিক্যাল গাইড।',
+  array['৪টি সম্পূর্ণ ইবুক', '৮৮% স্পেশাল সাশ্রয়', 'সব রিসোর্স ও টেমপ্লেট', 'লাইফটাইম আপডেট'],
+  104,
+  149.00,
+  '/assets/images/bundle-hero.webp',
+  'ebooks/combo-all-4.pdf',
   true
 )
 on conflict (slug) do update set
@@ -265,5 +277,104 @@ on conflict (slug) do update set
   file_path = excluded.file_path,
   is_active = excluded.is_active;
 
--- Update all existing books in database to flat 99 BDT offer price
-update public.books set price_bdt = 99.00;
+-- Books Table: Bundle & Sale Columns
+alter table public.books add column if not exists is_bundle boolean not null default false;
+alter table public.books add column if not exists sale_price_bdt numeric(10, 2);
+alter table public.books add column if not exists sale_ends_at timestamptz;
+update public.books set is_bundle = true where slug = 'combo-all-4';
+
+-- Bundle Items Table
+create table if not exists public.bundle_items (
+  bundle_id uuid not null references public.books(id) on delete cascade,
+  book_id uuid not null references public.books(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (bundle_id, book_id)
+);
+alter table public.bundle_items enable row level security;
+drop policy if exists "Public view bundle items" on public.bundle_items;
+create policy "Public view bundle items" on public.bundle_items for select using (true);
+
+insert into public.bundle_items (bundle_id, book_id)
+select 
+  (select id from public.books where slug = 'combo-all-4'),
+  b.id
+from public.books b
+where b.slug in ('ai-income', 'freelancer-payment', 'facebook-business', 'ai-video-editing')
+on conflict do nothing;
+
+-- Orders Table: source column (online / manual)
+alter table public.orders add column if not exists source text not null default 'online';
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'orders_source_check') then
+    alter table public.orders add constraint orders_source_check check (source in ('online', 'manual'));
+  end if;
+end $$;
+
+-- Reviews Table: support admin manual additions & proof uploads
+alter table public.reviews alter column order_id drop not null;
+alter table public.reviews add column if not exists source text not null default 'buyer';
+alter table public.reviews add column if not exists proof_path text;
+alter table public.reviews add column if not exists review_date date not null default current_date;
+
+drop policy if exists "Public can view approved reviews" on public.reviews;
+create policy "Public can view approved reviews" on public.reviews for select using (approved = true);
+drop policy if exists "Admins full access to reviews" on public.reviews;
+create policy "Admins full access to reviews" on public.reviews for all using (public.is_admin());
+
+-- Settings Table (Offer countdown & banner text)
+create table if not exists public.settings (
+  key text primary key,
+  value text not null,
+  updated_at timestamptz not null default now()
+);
+alter table public.settings enable row level security;
+drop policy if exists "Public can view settings" on public.settings;
+create policy "Public can view settings" on public.settings for select using (true);
+drop policy if exists "Admins can manage settings" on public.settings;
+create policy "Admins can manage settings" on public.settings for all using (public.is_admin());
+
+insert into public.settings (key, value)
+values 
+  ('combo_active', 'true'),
+  ('banner_text', '৪টা বই একসাথে মেগা কম্বো মাত্র ৳১৪৯! সীমিত সময়ের বিশেষ অফার'),
+  ('offer_ends_at', '')
+on conflict (key) do nothing;
+
+-- Private Storage Bucket for Review Proofs
+insert into storage.buckets (id, name, public)
+values ('review-proofs', 'review-proofs', false)
+on conflict (id) do nothing;
+
+drop policy if exists "Admins manage review proofs" on storage.objects;
+create policy "Admins manage review proofs"
+  on storage.objects for all
+  using (bucket_id = 'review-proofs' and public.is_admin());
+
+-- Real Book Sales Count Security-Definer Function
+create or replace function public.book_sales_counts()
+returns table (slug text, sold bigint)
+language sql security definer set search_path = public as $$
+  with combo_orders as (
+    select count(o.id) as combo_count
+    from public.orders o
+    join public.books b on b.id = o.book_id
+    where b.slug = 'combo-all-4' and o.status = 'paid'
+  ),
+  book_direct_orders as (
+    select b.slug, count(o.id) as direct_count
+    from public.books b
+    left join public.orders o on o.book_id = b.id and o.status = 'paid'
+    where b.is_bundle = false
+    group by b.slug
+  )
+  select 
+    bdo.slug,
+    (bdo.direct_count + (select combo_count from combo_orders)) as sold
+  from book_direct_orders bdo
+  union all
+  select 
+    'combo-all-4' as slug,
+    (select combo_count from combo_orders) as sold;
+$$;
+grant execute on function public.book_sales_counts() to anon, authenticated;

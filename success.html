@@ -63,17 +63,31 @@
           </p>
 
           <!-- Book Mockup Display -->
-          <div style="margin-bottom: 24px; display: flex; justify-content: center;">
+          <div id="receipt-mockup-wrapper" style="margin-bottom: 24px; display: flex; justify-content: center;">
             <img id="receipt-book-mockup" src="/assets/images/bundle-hero.webp" alt="Purchased eBook" style="max-width: 140px; height: auto; filter: drop-shadow(0 8px 16px rgba(0,0,0,0.15)); border-radius: 8px;">
           </div>
 
-          <!-- Download Action Card -->
-          <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: var(--radius-lg); padding: 28px 20px; max-width: 540px; margin: 0 auto 24px auto;">
+          <!-- Single Book Download Action Card -->
+          <div id="single-download-box" style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: var(--radius-lg); padding: 28px 20px; max-width: 540px; margin: 0 auto 24px auto;">
             <button id="btn-download-pdf" class="btn btn-primary btn-lg" style="font-size: 1.25rem; padding: 16px 36px; box-shadow: 0 4px 15px rgba(22, 163, 74, 0.3); background: #16a34a; border-color: #16a34a;">
               📥 এখনই ইবুক ডাউনলোড করুন (PDF)
             </button>
             <div id="download-notice" style="margin-top: 14px; font-size: 0.88rem; color: var(--text-muted);">
               (নিরাপত্তা নিশ্চিত করতে ডাউনলোড লিংকটি ১০ মিনিট কার্যকর থাকে। সর্বোচ্চ ৫ বার ডাউনলোড করা যাবে)
+            </div>
+          </div>
+
+          <!-- Bundle Download Cards (Shown for Combo Orders) -->
+          <div id="bundle-downloads-box" style="display: none; max-width: 620px; margin: 0 auto 28px auto; text-align: left;">
+            <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 16px; margin-bottom: 20px; text-align: center;">
+              <span style="font-size: 1.25rem; font-weight: 800; color: #065f46;">🎉 ৪টি ইবুকের সম্পূর্ণ মেগা কম্বো আনলক হয়েছে!</span>
+              <p style="margin: 6px 0 0 0; font-size: 0.9rem; color: #047857;">প্রতিটি বই আলাদাভাবে ডাউনলোড করতে নিচের বাটনগুলোতে ক্লিক করুন।</p>
+            </div>
+            <div id="bundle-books-grid" style="display: flex; flex-direction: column; gap: 14px;">
+              <!-- 4 books rendered via JS -->
+            </div>
+            <div style="margin-top: 14px; font-size: 0.88rem; color: var(--text-muted); text-align: center;">
+              (নিরাপত্তা নিশ্চিত করতে প্রতিটি বইয়ের লিংক ১০ মিনিট কার্যকর থাকে। প্রতিটি বই সর্বোচ্চ ৫ বার ডাউনলোড করা যাবে)
             </div>
           </div>
 

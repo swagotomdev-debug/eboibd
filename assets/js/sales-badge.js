@@ -1,10 +1,9 @@
 /**
- * eboibd.site - Real Sales Counter & Badge Renderer
- * Requirement:
- * - Sales badge shows the REAL number of paid orders from the database,
- *   e.g. "🔥 ৪৫ জন কিনেছেন", ONLY when it is 10 or more.
- * - Below 10, show "✨ নতুন প্রকাশিত".
- * - Never add any starting or fake number.
+ * eboibd.site - Real Sold Counter & Badge Renderer
+ * - Reads real verified sales from database (paid orders + paid combo orders)
+ * - If count > 0: "🔥 ৫৭ কপি বিক্রি হয়েছে"
+ * - If count == 0: "✨ নতুন প্রকাশিত"
+ * - Zero fake numbers, zero starting numbers
  */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -17,57 +16,65 @@ async function loadRealSalesCounts() {
 
   try {
     const config = window.EBOI_CONFIG;
-    if (!config || !config.supabaseUrl || config.supabaseUrl.includes("your-project")) {
-      // Supabase not yet configured by user, render honest default "✨ নতুন প্রকাশিত"
-      badgeElements.forEach((el) => renderSalesBadge(el, 0));
-      return;
-    }
+    let countsMap = {};
 
-    const res = await fetch(`${config.supabaseUrl}/rest/v1/rpc/get_book_sales_counts`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "apikey": config.supabaseAnonKey,
-        "Authorization": `Bearer ${config.supabaseAnonKey}`
+    // 1. Try calling Serverless /api/book-sales
+    try {
+      const res = await fetch("/api/book-sales");
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.success && data.counts) {
+          countsMap = data.counts;
+        }
       }
-    });
+    } catch (_) {}
 
-    if (!res.ok) {
-      throw new Error(`RPC error: ${res.status}`);
-    }
-
-    const counts = await res.json();
-    // counts is array of { slug: string, paid_count: number }
-    const countMap = {};
-    if (Array.isArray(counts)) {
-      counts.forEach((item) => {
-        countMap[item.slug] = item.paid_count || 0;
-      });
+    // 2. Fallback: Call Supabase RPC book_sales_counts directly
+    if (Object.keys(countsMap).length === 0 && config && config.supabaseUrl) {
+      try {
+        const rpcRes = await fetch(`${config.supabaseUrl}/rest/v1/rpc/book_sales_counts`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "apikey": config.supabaseAnonKey,
+            "Authorization": `Bearer ${config.supabaseAnonKey}`
+          },
+          body: JSON.stringify({})
+        });
+        if (rpcRes.ok) {
+          const list = await rpcRes.json();
+          if (Array.isArray(list)) {
+            list.forEach((item) => {
+              if (item.slug) countsMap[item.slug] = Number(item.sold || 0);
+            });
+          }
+        }
+      } catch (_) {}
     }
 
     badgeElements.forEach((el) => {
       const slug = el.getAttribute("data-sales-slug");
-      const realCount = countMap[slug] || 0;
+      const realCount = countsMap[slug] !== undefined ? countsMap[slug] : 0;
       renderSalesBadge(el, realCount);
     });
+
   } catch (err) {
-    console.warn("Real sales counts could not be loaded from database:", err);
-    // On failure or empty DB, strictly show real honest status: "✨ নতুন প্রকাশিত"
+    console.warn("Real sales counts warning:", err);
     badgeElements.forEach((el) => renderSalesBadge(el, 0));
   }
 }
 
 function renderSalesBadge(container, count) {
-  if (count >= 10) {
+  if (count > 0) {
     container.innerHTML = `
-      <span class="sales-badge">
-        <span class="pulse-dot">🔥</span>
-        <span>${toBanglaNumber(count)} জন কিনেছেন</span>
+      <span class="sales-badge" style="background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px; font-size: 0.82rem;">
+        <span>🔥</span>
+        <span>${toBanglaNumber(count)} কপি বিক্রি হয়েছে</span>
       </span>
     `;
   } else {
     container.innerHTML = `
-      <span class="sales-badge new">
+      <span class="sales-badge new" style="background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px; font-size: 0.82rem;">
         <span>✨</span>
         <span>নতুন প্রকাশিত</span>
       </span>

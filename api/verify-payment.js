@@ -1,6 +1,13 @@
 // Vercel Serverless Function: verify-payment
 // Verifies transaction with ZiniPay and marks order paid in Supabase
 
+const BUNDLE_BOOKS = [
+  { slug: "ai-income", title: "AI দিয়ে ঘরে বসে আয়", mockupUrl: "/assets/images/ai-income-mockup.webp", downloadUrl: "/sample-ebooks/ai-income.pdf" },
+  { slug: "freelancer-payment", title: "ফ্রিল্যান্সারের টাকা দেশে আনার পুরো গাইড ২০২৬", mockupUrl: "/assets/images/freelancer-payment-mockup.webp", downloadUrl: "/sample-ebooks/freelancer-payment.pdf" },
+  { slug: "facebook-business", title: "ফেসবুক পেজ থেকে ব্যবসা", mockupUrl: "/assets/images/facebook-business-mockup.webp", downloadUrl: "/sample-ebooks/facebook-business.pdf" },
+  { slug: "ai-video-editing", title: "AI দিয়ে ভিডিও এডিটিং", mockupUrl: "/assets/images/ai-video-editing-mockup.webp", downloadUrl: "/sample-ebooks/ai-video-editing.pdf" }
+];
+
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
@@ -28,7 +35,7 @@ export default async function handler(req, res) {
     let order = null;
     let queryField = orderId ? `id=eq.${orderId}` : `gateway_ref=eq.${invoiceId}`;
     try {
-      const orderRes = await fetch(`${supabaseUrl}/rest/v1/orders?${queryField}&select=*`, {
+      const orderRes = await fetch(`${supabaseUrl}/rest/v1/orders?${queryField}&select=*,books(id,slug,title,is_bundle)`, {
         headers: {
           "apikey": supabaseServiceKey,
           "Authorization": `Bearer ${supabaseServiceKey}`,
@@ -40,7 +47,23 @@ export default async function handler(req, res) {
       }
     } catch (_) {}
 
-    // Verify with ZiniPay if API key is present
+    // Fallback simple query if join failed
+    if (!order) {
+      try {
+        const simpleRes = await fetch(`${supabaseUrl}/rest/v1/orders?${queryField}&select=*`, {
+          headers: {
+            "apikey": supabaseServiceKey,
+            "Authorization": `Bearer ${supabaseServiceKey}`,
+          }
+        });
+        if (simpleRes.ok) {
+          const list = await simpleRes.json();
+          if (list && list[0]) order = list[0];
+        }
+      } catch (_) {}
+    }
+
+    // Verify with ZiniPay server-to-server
     if (zinipayApiKey && (invoiceId || (order && order.gateway_ref))) {
       const targetInvoice = invoiceId || order.gateway_ref;
       const verifyRes = await fetch("https://api.zinipay.com/v1/payment/verify", {
@@ -90,9 +113,20 @@ export default async function handler(req, res) {
       order.status = "paid";
     }
 
+    const isBundle = (order && order.books && order.books.is_bundle) ||
+      (order && (order.book_slug === "combo-all-4" || (order.amount_bdt && Number(order.amount_bdt) === 149)));
+
+    const responseOrder = {
+      ...(order || { id: orderId, status: "paid", amount_bdt: 149 }),
+      is_bundle: isBundle,
+      bundle_books: isBundle ? BUNDLE_BOOKS : null,
+      book_title: (order && order.books && order.books.title) || (isBundle ? "৪টা বইয়ের কম্বো বান্ডেল" : "ডিজিটাল ইবুক"),
+      book_slug: (order && order.books && order.books.slug) || (isBundle ? "combo-all-4" : "ai-income")
+    };
+
     return res.status(200).json({
       success: true,
-      order: order || { id: orderId, status: "paid", amount_bdt: 99 }
+      order: responseOrder
     });
 
   } catch (error) {

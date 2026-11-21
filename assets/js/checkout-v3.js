@@ -42,10 +42,17 @@ function initCheckout() {
   if (summaryOriginalPrice) summaryOriginalPrice.textContent = `৳${toBanglaNumber(regularPrice)}`;
   if (summaryDiscount) summaryDiscount.textContent = `-৳${toBanglaNumber(discountVal)}`;
 
-  if (thumbP1) thumbP1.src = `/assets/images/${slug}-page1.webp`;
-  if (thumbP2) thumbP2.src = `/assets/images/${slug}-page2.webp`;
-  if (thumbP3) thumbP3.src = `/assets/images/${slug}-page3.webp`;
-  if (thumbP4) thumbP4.src = `/assets/images/${slug}-page4.webp`;
+  if (slug === "combo-all-4") {
+    if (thumbP1) thumbP1.src = `/assets/images/ai-income-page1.webp`;
+    if (thumbP2) thumbP2.src = `/assets/images/freelancer-payment-page1.webp`;
+    if (thumbP3) thumbP3.src = `/assets/images/facebook-business-page1.webp`;
+    if (thumbP4) thumbP4.src = `/assets/images/ai-video-editing-page1.webp`;
+  } else {
+    if (thumbP1) thumbP1.src = `/assets/images/${slug}-page1.webp`;
+    if (thumbP2) thumbP2.src = `/assets/images/${slug}-page2.webp`;
+    if (thumbP3) thumbP3.src = `/assets/images/${slug}-page3.webp`;
+    if (thumbP4) thumbP4.src = `/assets/images/${slug}-page4.webp`;
+  }
 
   if (book.themeColor) {
     document.documentElement.style.setProperty("--theme-color", book.themeColor);

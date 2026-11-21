@@ -23,7 +23,7 @@ serve(async (req) => {
   }
 
   try {
-    const { order_id } = await req.json();
+    const { order_id, book_slug } = await req.json();
 
     if (!order_id) {
       return new Response(
@@ -39,7 +39,7 @@ serve(async (req) => {
     // 1. Fetch order and verify it is paid
     const { data: order, error: orderError } = await supabase
       .from("orders")
-      .select("id, status, download_count, book_id, books(title, slug, file_path)")
+      .select("id, status, download_count, book_id, books(title, slug, file_path, is_bundle)")
       .eq("id", order_id)
       .single();
 
@@ -70,15 +70,16 @@ serve(async (req) => {
       );
     }
 
-    // Determine the private file path inside the 'ebooks' private bucket
-    const filePath = order.books?.file_path || `ebooks/${order.books?.slug}.pdf`;
+    // Determine target book slug and file path
+    const targetSlug = book_slug || order.books?.slug || "ai-income";
+    const filePath = (book_slug ? `${book_slug}.pdf` : (order.books?.file_path || `ebooks/${targetSlug}.pdf`));
     const cleanPath = filePath.replace(/^ebooks\//, ""); // remove leading bucket prefix if present
 
     // 2. Generate Supabase signed URL valid for 10 minutes (600 seconds)
     const { data: signedData, error: signError } = await supabase.storage
       .from("ebooks")
       .createSignedUrl(cleanPath, 600, {
-        download: `${order.books?.slug || "ebook"}.pdf`
+        download: `${targetSlug}.pdf`
       });
 
     if (signError || !signedData?.signedUrl) {

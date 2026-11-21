@@ -117,7 +117,33 @@ export default async function handler(req, res) {
     const addedSlugs = new Set();
 
     paidOrders.forEach((o) => {
-      // Find matching book
+      // Check if this order is for combo-all-4
+      const isCombo = (booksMap["combo-all-4"] && o.book_id === booksMap["combo-all-4"].id) ||
+        o.book_slug === "combo-all-4" ||
+        Number(o.amount_bdt) === 149;
+
+      if (isCombo) {
+        // Add all 4 books
+        Object.keys(BOOKS).forEach((key) => {
+          const b = BOOKS[key];
+          if (!addedSlugs.has(b.slug)) {
+            addedSlugs.add(b.slug);
+            customerBooks.push({
+              ...b,
+              orderId: o.id,
+              transactionId: o.transaction_id || o.gateway_ref || "VERIFIED",
+              purchasedAt: o.paid_at || o.created_at,
+              amountPaid: 149,
+              isComboItem: true,
+              downloadUrl: b.downloadUrl,
+              readUrl: `/sample-ebooks/${b.slug}.pdf`
+            });
+          }
+        });
+        return;
+      }
+
+      // Single book matching
       let matchedBook = null;
       for (const key of Object.keys(BOOKS)) {
         if (o.book_id && booksMap[key] && booksMap[key].id === o.book_id) {
@@ -126,7 +152,6 @@ export default async function handler(req, res) {
         }
       }
 
-      // Fallback matching by amount or default
       if (!matchedBook) {
         matchedBook = BOOKS["ai-income"];
       }
