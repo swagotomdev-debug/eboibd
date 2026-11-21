@@ -92,7 +92,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       success: true,
-      order: order || { id: orderId, status: "paid", amount_bdt: 299 }
+      order: order || { id: orderId, status: "paid", amount_bdt: 99 }
     });
 
   } catch (error) {

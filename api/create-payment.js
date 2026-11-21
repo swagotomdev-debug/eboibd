@@ -2,10 +2,10 @@
 // Connects checkout form directly to ZiniPay Payment Gateway & Supabase
 
 const BOOKS = {
-  "ai-income": { price: 299, title: "AI দিয়ে ঘরে বসে আয়: ৩০ দিনে প্রথম ইনকাম" },
-  "freelancer-payment": { price: 249, title: "ফ্রিল্যান্সারের টাকা দেশে আনার পুরো গাইড ২০২৬" },
-  "facebook-business": { price: 349, title: "ফেসবুক পেজ থেকে ব্যবসা: শূন্য থেকে প্রথম ১০০ অর্ডার" },
-  "ai-video-editing": { price: 299, title: "AI দিয়ে ভিডিও এডিটিং: প্রম্পট ও স্কিল" },
+  "ai-income": { price: 99, title: "AI দিয়ে ঘরে বসে আয়: ৩০ দিনে প্রথম ইনকাম" },
+  "freelancer-payment": { price: 99, title: "ফ্রিল্যান্সারের টাকা দেশে আনার পুরো গাইড ২০২৬" },
+  "facebook-business": { price: 99, title: "ফেসবুক পেজ থেকে ব্যবসা: শূন্য থেকে প্রথম ১০০ অর্ডার" },
+  "ai-video-editing": { price: 99, title: "AI দিয়ে ভিডিও এডিটিং: প্রম্পট ও স্কিল" },
 };
 
 export default async function handler(req, res) {

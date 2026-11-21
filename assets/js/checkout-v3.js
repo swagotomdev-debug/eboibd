@@ -37,8 +37,8 @@ function initCheckout() {
   if (summaryPrice) summaryPrice.textContent = `৳${toBanglaNumber(book.price)}`;
   if (submitBtnText) submitBtnText.textContent = `৳${toBanglaNumber(book.price)}`;
 
-  const regularPrice = book.price * 2;
-  const discountVal = regularPrice - book.price;
+  const regularPrice = book.regularPrice || 599;
+  const discountVal = regularPrice - (book.price || 99);
   if (summaryOriginalPrice) summaryOriginalPrice.textContent = `৳${toBanglaNumber(regularPrice)}`;
   if (summaryDiscount) summaryDiscount.textContent = `-৳${toBanglaNumber(discountVal)}`;
 

@@ -63,7 +63,13 @@
         <span class="admin-badge">Admin Portal</span>
       </div>
 
-      <div class="admin-user-info">
+      <div class="admin-user-info" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <button id="btn-sync-supabase" onclick="syncBookPricesToSupabase()" class="btn btn-primary" style="padding: 6px 12px; font-size: 0.85rem; background: #059669; border-color: #059669;">
+          🔄 Supabase-এ ৳৯৯ সিঙ্ক
+        </button>
+        <a href="/my-books" target="_blank" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.85rem;">
+          📚 কাস্টমার লাইব্রেরি
+        </a>
         <span id="admin-user-email" style="font-weight: 600; font-size: 0.95rem;">-</span>
         <button id="admin-logout-btn" class="btn btn-secondary" style="padding: 6px 14px; font-size: 0.85rem;">
           লগআউট
@@ -173,7 +179,7 @@
                   <th>বই</th>
                   <th>টাকা</th>
                   <th>স্ট্যাটাস</th>
-                  <th>ডাউনলোড</th>
+                  <th>অ্যাকশন</th>
                 </tr>
               </thead>
               <tbody id="orders-tbody">
@@ -302,8 +308,8 @@
   <!-- Supabase Official JS SDK via CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <script src="/assets/js/config.js"></script>
-  <script src="/assets/js/admin.js"></script>
+  <script src="/assets/js/config.js?v=6"></script>
+  <script src="/assets/js/admin.js?v=6"></script>
 
   <script>
     function openAddBookModal() {

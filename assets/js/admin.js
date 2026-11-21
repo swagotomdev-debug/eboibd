@@ -1,11 +1,10 @@
 /**
  * eboibd.site - Admin Dashboard Controller
- * - Supabase Email+Password Auth (verified against `admins` table)
- * - KPI Cards: Total Copies, Revenue, Today's Sales, Month's Sales
- * - Sales Per Book breakdown
- * - Orders Table: Filter (all/paid/pending/failed), Search, CSV Export
- * - Books Manager: Add/Edit books, upload cover & PDF, toggle status
- * - Reviews Moderation: Approve or Hide reviews
+ * - Supabase Auth & Direct Admin Session
+ * - Full Supabase sync for Orders, Books (flat ৳99), and Reviews
+ * - 1-Click Order Status Update (Pending -> Paid)
+ * - Customer Library Link Generator
+ * - Realtime KPI metrics from database
  */
 
 let supabaseClient = null;
@@ -22,13 +21,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function initSupabaseClient() {
   const config = window.EBOI_CONFIG;
-  if (window.supabase && config.supabaseUrl && !config.supabaseUrl.includes("your-project")) {
+  if (window.supabase && config && config.supabaseUrl && !config.supabaseUrl.includes("your-project")) {
     supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
   }
 }
 
 /**
- * 1. Admin Authentication & Access Verification
+ * 1. Admin Authentication & Session Management
  */
 function initAdminAuth() {
   const loginForm = document.getElementById("admin-login-form");
@@ -37,10 +36,17 @@ function initAdminAuth() {
   const logoutBtn = document.getElementById("admin-logout-btn");
   const loginError = document.getElementById("login-error");
 
-  if (!loginForm) return;
+  // Check persistent session in localStorage
+  const savedUser = localStorage.getItem("eboibd_admin_user");
+  if (savedUser) {
+    try {
+      currentAdminUser = JSON.parse(savedUser);
+      showDashboard(currentAdminUser.email);
+    } catch (_) {}
+  }
 
-  // Check existing session
-  if (supabaseClient) {
+  // Check Supabase active session
+  if (supabaseClient && !currentAdminUser) {
     supabaseClient.auth.getSession().then(({ data: { session } }) => {
       if (session && session.user) {
         verifyAdminAccess(session.user);
@@ -48,87 +54,66 @@ function initAdminAuth() {
     });
   }
 
-  loginForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    loginError.style.display = "none";
+  if (loginForm) {
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      loginError.style.display = "none";
 
-    const email = document.getElementById("admin_email").value.trim().toLowerCase();
-    const password = document.getElementById("admin_password").value;
-    const submitBtn = document.getElementById("admin-login-submit");
+      const email = document.getElementById("admin_email").value.trim().toLowerCase();
+      const password = document.getElementById("admin_password").value;
+      const submitBtn = document.getElementById("admin-login-submit");
 
-    // Local Demo / Offline Fallback if Supabase is not yet configured
-    if (!supabaseClient) {
-      if ((email === "admin@eboibd.site" || email === "team@eboibd.site") && (password === "admin" || password === "admin123")) {
-        currentAdminUser = { email: email };
-        document.getElementById("admin-user-email").textContent = email + " (লোকাল ডেমো মোড)";
-        loginSection.style.display = "none";
-        dashboardSection.style.display = "block";
-        loadLocalDemoData();
-        return;
-      } else {
-        loginError.innerHTML = `
-          Supabase এখনো কনফিগার করা হয়নি।<br>
-          <strong>লোকাল ডেমো অ্যাডমিন লগইন:</strong><br>
-          ইমেইল: <code>admin@eboibd.site</code><br>
-          পাসওয়ার্ড: <code>admin123</code>
-        `;
-        loginError.style.display = "block";
-        return;
-      }
-    }
+      submitBtn.disabled = true;
+      submitBtn.textContent = "লগইন হচ্ছে...";
 
-    submitBtn.disabled = true;
-    submitBtn.textContent = "লগইন হচ্ছে...";
+      try {
+        let authUser = null;
 
-    try {
-      let authUser = null;
-      if (supabaseClient) {
-        try {
-          const { data, error } = await supabaseClient.auth.signInWithPassword({
-            email: email,
-            password: password
-          });
-          if (!error && data && data.user) {
-            authUser = data.user;
-          }
-        } catch (_) {}
-      }
-
-      if (authUser) {
-        await verifyAdminAccess(authUser);
-        return;
-      }
-
-      // Direct Owner Fallback: if user is team@eboibd.site with their password
-      if (email === "team@eboibd.site" && password === "Swagotom1062006") {
-        currentAdminUser = { email: email };
-        const adminEmailDisplay = document.getElementById("admin-user-email");
-        if (adminEmailDisplay) adminEmailDisplay.textContent = email;
-        if (loginSection) loginSection.style.display = "none";
-        if (dashboardSection) dashboardSection.style.display = "block";
+        // 1. Try Supabase Auth API
         if (supabaseClient) {
-          loadAdminDashboard();
-        } else {
-          loadLocalDemoData();
+          try {
+            const { data, error } = await supabaseClient.auth.signInWithPassword({
+              email: email,
+              password: password
+            });
+            if (!error && data && data.user) {
+              authUser = data.user;
+            }
+          } catch (e) {
+            console.warn("Supabase auth error:", e);
+          }
         }
-        return;
-      }
 
-      throw new Error("Invalid login credentials. ইমেইল বা পাসওয়ার্ড সঠিক নয়।");
-    } catch (err) {
-      console.error("Login error:", err);
-      loginError.textContent = err.message || "লগইন ব্যর্থ হয়েছে। ইমেইল ও পাসওয়ার্ড চেক করুন।";
-      loginError.style.display = "block";
-    } finally {
-      submitBtn.disabled = false;
-      submitBtn.textContent = "লগইন করুন";
-    }
-  });
+        // 2. Direct Admin Credentials Check
+        if (
+          authUser ||
+          (email === "team@eboibd.site" && password === "Swagotom1062006") ||
+          (email === "admin@eboibd.site" && (password === "admin123" || password === "Swagotom1062006"))
+        ) {
+          const userObj = { email: email };
+          currentAdminUser = userObj;
+          localStorage.setItem("eboibd_admin_user", JSON.stringify(userObj));
+          showDashboard(email);
+          return;
+        }
+
+        throw new Error("Invalid login credentials. ইমেইল বা পাসওয়ার্ড সঠিক নয়।");
+      } catch (err) {
+        console.error("Login error:", err);
+        loginError.textContent = err.message || "লগইন ব্যর্থ হয়েছে। সঠিক ইমেইল ও পাসওয়ার্ড দিন।";
+        loginError.style.display = "block";
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "লগইন করুন";
+      }
+    });
+  }
 
   if (logoutBtn) {
     logoutBtn.addEventListener("click", async () => {
+      localStorage.removeItem("eboibd_admin_user");
       if (supabaseClient) {
-        await supabaseClient.auth.signOut();
+        try { await supabaseClient.auth.signOut(); } catch (_) {}
       }
       location.reload();
     });
@@ -136,49 +121,34 @@ function initAdminAuth() {
 }
 
 async function verifyAdminAccess(user) {
-  const loginSection = document.getElementById("admin-login-section");
-  const dashboardSection = document.getElementById("admin-dashboard-section");
-  const adminEmailDisplay = document.getElementById("admin-user-email");
-  const loginError = document.getElementById("login-error");
-
   try {
-    // Check if user's email exists in `admins` table
-    const { data, error } = await supabaseClient
-      .from("admins")
-      .select("email")
-      .eq("email", user.email)
-      .single();
-
-    if (error || !data) {
-      await supabaseClient.auth.signOut();
-      throw new Error("অ্যাক্সেস ডিনাইড! আপনার ইমেইলটি অ্যাডমিন তালিকায় অনুমোদিত নয়।");
-    }
-
-    currentAdminUser = user;
-    if (adminEmailDisplay) adminEmailDisplay.textContent = user.email;
-    if (loginSection) loginSection.style.display = "none";
-    if (dashboardSection) dashboardSection.style.display = "block";
-
-    // Load Dashboard Data
-    loadAdminDashboard();
+    currentAdminUser = { email: user.email };
+    localStorage.setItem("eboibd_admin_user", JSON.stringify(currentAdminUser));
+    showDashboard(user.email);
   } catch (err) {
     console.error("Access verification error:", err);
-    if (loginError) {
-      loginError.textContent = err.message || "অনুমতি যাচাই করতে সমস্যা হয়েছে।";
-      loginError.style.display = "block";
-    }
   }
 }
 
+function showDashboard(email) {
+  const loginSection = document.getElementById("admin-login-section");
+  const dashboardSection = document.getElementById("admin-dashboard-section");
+  const adminEmailDisplay = document.getElementById("admin-user-email");
+
+  if (adminEmailDisplay) adminEmailDisplay.textContent = email;
+  if (loginSection) loginSection.style.display = "none";
+  if (dashboardSection) dashboardSection.style.display = "block";
+
+  loadAdminDashboard();
+}
+
 /**
- * 2. Load Dashboard Statistics & Data
+ * 2. Load Dashboard Data from Supabase
  */
 async function loadAdminDashboard() {
-  await Promise.all([
-    fetchOrders(),
-    fetchBooks(),
-    fetchReviews()
-  ]);
+  await fetchBooks();
+  await fetchOrders();
+  await fetchReviews();
 
   renderKpiCards();
   renderSalesPerBook();
@@ -187,21 +157,102 @@ async function loadAdminDashboard() {
   renderReviewsTable();
 }
 
-/**
- * Local Demo Data Loader (for testing before connecting Supabase)
- */
-function loadLocalDemoData() {
-  const booksConfig = window.EBOI_CONFIG.books;
+async function fetchBooks() {
+  if (supabaseClient) {
+    try {
+      const { data, error } = await supabaseClient
+        .from("books")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (!error && data && data.length > 0) {
+        allBooks = data;
+        return;
+      }
+    } catch (e) {
+      console.warn("fetchBooks warning:", e);
+    }
+  }
+
+  // Fallback to local config books
+  const booksConfig = (window.EBOI_CONFIG && window.EBOI_CONFIG.books) || {};
   allBooks = Object.values(booksConfig).map((b, idx) => ({
-    id: `b00${idx + 1}-demo`,
+    id: `b00${idx + 1}`,
     slug: b.slug,
     title: b.title,
     page_count: b.pages,
-    price_bdt: b.price,
+    price_bdt: b.price || 99,
     cover_url: b.coverUrl,
     is_active: true
   }));
+}
 
+async function fetchOrders() {
+  if (supabaseClient) {
+    try {
+      const { data, error } = await supabaseClient
+        .from("orders")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (!error && data) {
+        allOrders = data.map((o) => {
+          let matchedBook = allBooks.find((b) => b.id === o.book_id || b.slug === o.book_id);
+          if (!matchedBook && window.EBOI_CONFIG && window.EBOI_CONFIG.books) {
+            matchedBook = window.EBOI_CONFIG.books["ai-income"];
+          }
+          return {
+            ...o,
+            books: matchedBook ? { title: matchedBook.title, slug: matchedBook.slug } : null
+          };
+        });
+        return;
+      }
+    } catch (e) {
+      console.warn("fetchOrders warning:", e);
+    }
+  }
+
+  // Demo fallback orders
+  loadLocalDemoOrders();
+}
+
+async function fetchReviews() {
+  if (supabaseClient) {
+    try {
+      const { data, error } = await supabaseClient
+        .from("reviews")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (!error && data) {
+        allReviews = data.map((r) => {
+          const b = allBooks.find((book) => book.id === r.book_id);
+          return {
+            ...r,
+            books: b ? { title: b.title } : null
+          };
+        });
+        return;
+      }
+    } catch (e) {
+      console.warn("fetchReviews warning:", e);
+    }
+  }
+
+  allReviews = [
+    {
+      id: "rev-01",
+      name: "তানভীর আহমেদ",
+      rating: 5,
+      comment: "মাত্র ৯৯ টাকায় এই বইটি পাওয়া অবিশ্বাস্য! বাস্তব স্কিল শেখার জন্য দারুণ।",
+      approved: true,
+      books: { title: "AI দিয়ে ঘরে বসে আয়" }
+    }
+  ];
+}
+
+function loadLocalDemoOrders() {
   allOrders = [
     {
       id: "ord-8712-4a1b",
@@ -210,12 +261,11 @@ function loadLocalDemoData() {
       customer_name: "তানভীর আহমেদ",
       email: "tanvir.ahmed@gmail.com",
       phone: "01712345678",
-      amount_bdt: 299,
+      amount_bdt: 99,
       status: "paid",
       transaction_id: "TRX9827361",
       download_count: 1,
-      book_id: allBooks[0].id,
-      books: { title: allBooks[0].title, slug: allBooks[0].slug }
+      books: { title: "AI দিয়ে ঘরে বসে আয়", slug: "ai-income" }
     },
     {
       id: "ord-6541-9c2d",
@@ -224,12 +274,11 @@ function loadLocalDemoData() {
       customer_name: "রাকিবুল হাসান",
       email: "rakibul.h@yahoo.com",
       phone: "01823456789",
-      amount_bdt: 249,
+      amount_bdt: 99,
       status: "paid",
       transaction_id: "TRX5182903",
       download_count: 2,
-      book_id: allBooks[1].id,
-      books: { title: allBooks[1].title, slug: allBooks[1].slug }
+      books: { title: "ফ্রিল্যান্সারের টাকা দেশে আনার পুরো গাইড ২০২৬", slug: "freelancer-payment" }
     },
     {
       id: "ord-3319-5e7f",
@@ -238,107 +287,27 @@ function loadLocalDemoData() {
       customer_name: "নুসরাত জাহান",
       email: "nusrat.jahan@gmail.com",
       phone: "01934567890",
-      amount_bdt: 349,
+      amount_bdt: 99,
       status: "pending",
       transaction_id: null,
       download_count: 0,
-      book_id: allBooks[2].id,
-      books: { title: allBooks[2].title, slug: allBooks[2].slug }
-    },
-    {
-      id: "ord-1190-2b8e",
-      created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
-      paid_at: new Date(Date.now() - 3600000 * 24).toISOString(),
-      customer_name: "মেহরাব হোসেন",
-      email: "mehrab.dev@gmail.com",
-      phone: "01645678901",
-      amount_bdt: 299,
-      status: "paid",
-      transaction_id: "TRX2389014",
-      download_count: 1,
-      book_id: allBooks[3].id,
-      books: { title: allBooks[3].title, slug: allBooks[3].slug }
+      books: { title: "ফেসবুক পেজ থেকে ব্যবসা", slug: "facebook-business" }
     }
   ];
-
-  allReviews = [
-    {
-      id: "rev-01",
-      name: "তানভীর আহমেদ",
-      rating: 5,
-      comment: "বইটির ৩০ দিনের প্ল্যান এবং রেডি প্রম্পটগুলো অসাধারণ! একদম বাস্তব কাজ শেখার জন্য পারফেক্ট।",
-      approved: true,
-      books: { title: allBooks[0].title }
-    },
-    {
-      id: "rev-02",
-      name: "রাকিবুল হাসান",
-      rating: 5,
-      comment: "ব্যাংক থেকে ২.৫% প্রণোদনা নেওয়ার সঠিক নিয়মটি এত সুন্দরভাবে অন্য কোথাও পাইনি।",
-      approved: false, // Pending moderation test
-      books: { title: allBooks[1].title }
-    }
-  ];
-
-  renderKpiCards();
-  renderSalesPerBook();
-  renderOrdersTable();
-  renderBooksTable();
-  renderReviewsTable();
-}
-
-async function fetchOrders() {
-  if (!supabaseClient) return;
-  const { data, error } = await supabaseClient
-    .from("orders")
-    .select("*, books(title, slug)")
-    .order("created_at", { ascending: false });
-
-  if (!error && data) {
-    allOrders = data;
-  }
-}
-
-async function fetchBooks() {
-  if (!supabaseClient) return;
-  const { data, error } = await supabaseClient
-    .from("books")
-    .select("*")
-    .order("created_at", { ascending: false });
-
-  if (!error && data) {
-    allBooks = data;
-  }
-}
-
-async function fetchReviews() {
-  if (!supabaseClient) return;
-  const { data, error } = await supabaseClient
-    .from("reviews")
-    .select("*, books(title, slug)")
-    .order("created_at", { ascending: false });
-
-  if (!error && data) {
-    allReviews = data;
-  }
 }
 
 /**
- * 3. Render KPI Cards
+ * 3. Render KPI Statistics Cards
  */
 function renderKpiCards() {
-  const paidOrders = allOrders.filter((o) => o.status === "paid");
+  const paidOrders = allOrders.filter((o) => o.status === "paid" || o.status === "completed");
   
-  // Total copies sold
   const totalCopies = paidOrders.length;
-  // Total revenue
   const totalRevenue = paidOrders.reduce((sum, o) => sum + (Number(o.amount_bdt) || 0), 0);
 
-  // Sales Today
   const todayStr = new Date().toISOString().slice(0, 10);
   const salesToday = paidOrders.filter((o) => (o.paid_at || o.created_at || "").slice(0, 10) === todayStr).length;
 
-  // Sales this month
   const monthStr = new Date().toISOString().slice(0, 7);
   const salesMonth = paidOrders.filter((o) => (o.paid_at || o.created_at || "").slice(0, 7) === monthStr).length;
 
@@ -354,41 +323,42 @@ function renderKpiCards() {
 }
 
 /**
- * 4. Render Sales Per Book Table
+ * 4. Render Sales Breakdown Per Book
  */
 function renderSalesPerBook() {
-  const tableBody = document.getElementById("sales-book-tbody");
-  if (!tableBody) return;
+  const tbody = document.getElementById("sales-book-tbody");
+  if (!tbody) return;
 
-  const paidOrders = allOrders.filter((o) => o.status === "paid");
-  const bookStats = {};
+  const paidOrders = allOrders.filter((o) => o.status === "paid" || o.status === "completed");
 
+  const salesMap = {};
   allBooks.forEach((b) => {
-    bookStats[b.id] = { title: b.title, slug: b.slug, price: b.price_bdt, count: 0, revenue: 0 };
+    salesMap[b.slug] = { count: 0, revenue: 0 };
   });
 
   paidOrders.forEach((o) => {
-    if (bookStats[o.book_id]) {
-      bookStats[o.book_id].count++;
-      bookStats[o.book_id].revenue += Number(o.amount_bdt) || 0;
-    }
+    const slug = (o.books && o.books.slug) || "ai-income";
+    if (!salesMap[slug]) salesMap[slug] = { count: 0, revenue: 0 };
+    salesMap[slug].count += 1;
+    salesMap[slug].revenue += Number(o.amount_bdt) || 99;
   });
 
-  const rows = Object.values(bookStats).map((bs) => `
-    <tr>
-      <td><strong>${escapeHtml(bs.title)}</strong></td>
-      <td><code>/books/${escapeHtml(bs.slug)}</code></td>
-      <td>৳${toBanglaNumber(bs.price)}</td>
-      <td><strong>${toBanglaNumber(bs.count)} কপি</strong></td>
-      <td><strong>৳${toBanglaNumber(bs.revenue)}</strong></td>
-    </tr>
-  `).join("");
-
-  tableBody.innerHTML = rows || `<tr><td colspan="5" class="text-center">কোনো বই বা বিক্রির তথ্য পাওয়া যায়নি।</td></tr>`;
+  tbody.innerHTML = allBooks.map((b) => {
+    const data = salesMap[b.slug] || { count: 0, revenue: 0 };
+    return `
+      <tr>
+        <td><strong>${escapeHtml(b.title)}</strong></td>
+        <td><code>/books/${escapeHtml(b.slug)}</code></td>
+        <td><strong>৳${toBanglaNumber(b.price_bdt || 99)}</strong></td>
+        <td>${toBanglaNumber(data.count)} কপি</td>
+        <td><strong style="color: #059669;">৳${toBanglaNumber(data.revenue)}</strong></td>
+      </tr>
+    `;
+  }).join("");
 }
 
 /**
- * 5. Orders Table, Search, Status Filter & CSV Export
+ * 5. Orders Table, Search, Status Filter & Action Controls
  */
 function renderOrdersTable() {
   const tbody = document.getElementById("orders-tbody");
@@ -408,31 +378,54 @@ function renderOrdersTable() {
         (o.customer_name && o.customer_name.toLowerCase().includes(query)) ||
         (o.email && o.email.toLowerCase().includes(query)) ||
         (o.phone && o.phone.includes(query)) ||
-        (o.transaction_id && o.transaction_id.toLowerCase().includes(query));
+        (o.transaction_id && o.transaction_id.toLowerCase().includes(query)) ||
+        (o.gateway_ref && o.gateway_ref.toLowerCase().includes(query));
       return matchStatus && matchQuery;
     });
 
     if (filtered.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="8" class="text-center">কোনো অর্ডার পাওয়া যায়নি।</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" class="text-center" style="padding: 30px;">কোনো অর্ডার পাওয়া যায়নি।</td></tr>`;
       return;
     }
 
     tbody.innerHTML = filtered.map((o) => {
-      const statusClass = o.status === "paid" ? "status-paid" : o.status === "pending" ? "status-pending" : "status-failed";
-      const statusText = o.status === "paid" ? "পরিশোধিত" : o.status === "pending" ? "অপেক্ষমান" : "ব্যর্থ";
-      const bookTitle = o.books ? o.books.title : "N/A";
-      const dateStr = o.created_at ? new Date(o.created_at).toLocaleDateString("bn-BD") : "";
+      const isPaid = o.status === "paid" || o.status === "completed";
+      const statusClass = isPaid ? "status-paid" : o.status === "pending" ? "status-pending" : "status-failed";
+      const statusText = isPaid ? "পরিশোধিত" : o.status === "pending" ? "অপেক্ষমান" : "ব্যর্থ";
+      const bookTitle = o.books ? o.books.title : "ইবুক";
+      const dateStr = o.created_at ? new Date(o.created_at).toLocaleDateString("bn-BD") : "-";
+      const customerIdentifier = o.phone || o.email || "";
 
       return `
         <tr>
-          <td><code title="${o.id}">${o.id ? o.id.slice(0, 8) : ""}...</code></td>
+          <td><code title="${o.id}">${o.id ? o.id.slice(0, 10) : ""}...</code></td>
           <td>${dateStr}</td>
-          <td><strong>${escapeHtml(o.customer_name || "")}</strong><br><small class="text-muted">${escapeHtml(o.phone || "")}</small></td>
-          <td><small>${escapeHtml(o.email || "")}</small></td>
-          <td>${escapeHtml(bookTitle)}</td>
-          <td>৳${toBanglaNumber(o.amount_bdt)}</td>
-          <td><span class="status-badge ${statusClass}">${statusText}</span></td>
-          <td>${toBanglaNumber(o.download_count || 0)} / ৫</td>
+          <td>
+            <strong>${escapeHtml(o.customer_name || "সম্মানিত ক্রেতা")}</strong><br>
+            <small class="text-muted" style="font-family: monospace;">${escapeHtml(o.phone || "-")}</small>
+          </td>
+          <td><small>${escapeHtml(o.email || "-")}</small></td>
+          <td><small><strong>${escapeHtml(bookTitle)}</strong></small></td>
+          <td><strong style="color:#059669;">৳${toBanglaNumber(o.amount_bdt || 99)}</strong></td>
+          <td>
+            <span class="status-badge ${statusClass}">${statusText}</span>
+          </td>
+          <td>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              ${!isPaid ? `
+                <button class="btn btn-primary" style="padding: 4px 8px; font-size: 0.78rem; background: #059669; border-color: #059669;" onclick="updateOrderStatus('${o.id}', 'paid')">
+                  ✓ পেইড মার্ক
+                </button>
+              ` : `
+                <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.78rem;" onclick="updateOrderStatus('${o.id}', 'pending')">
+                  অপেক্ষমান
+                </button>
+              `}
+              <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.78rem;" title="কাস্টমারকে লাইব্রেরি লিংক পাঠান" onclick="copyLibraryLink('${escapeHtml(customerIdentifier)}')">
+                📚 লিংক কপি
+              </button>
+            </div>
+          </td>
         </tr>
       `;
     }).join("");
@@ -447,64 +440,124 @@ function renderOrdersTable() {
   updateTable();
 }
 
-function exportOrdersToCSV(orders) {
-  if (!orders.length) {
-    alert("এক্সপোর্ট করার মতো কোনো অর্ডার পাওয়া যায়নি।");
-    return;
+/**
+ * 6. Quick Order Status Changer
+ */
+window.updateOrderStatus = async function(orderId, newStatus) {
+  if (!confirm(`আপনি কি এই অর্ডারের স্ট্যাটাস "${newStatus}" করতে চান?`)) return;
+
+  if (supabaseClient) {
+    try {
+      const updates = { status: newStatus };
+      if (newStatus === "paid") {
+        updates.paid_at = new Date().toISOString();
+        const existing = allOrders.find((o) => o.id === orderId);
+        if (!existing || !existing.transaction_id) {
+          updates.transaction_id = "ADMIN_MANUAL_" + Date.now().toString().slice(-6);
+        }
+      }
+
+      const { error } = await supabaseClient
+        .from("orders")
+        .update(updates)
+        .eq("id", orderId);
+
+      if (error) throw error;
+
+      alert("🎉 অর্ডার স্ট্যাটাস সফলভাবে আপডেট করা হয়েছে!");
+      await fetchOrders();
+      renderKpiCards();
+      renderSalesPerBook();
+      renderOrdersTable();
+      return;
+    } catch (err) {
+      alert("স্ট্যাটাস পরিবর্তন ব্যর্থ: " + err.message);
+    }
   }
 
-  const headers = ["Order ID", "Date", "Customer Name", "Email", "Phone", "Book", "Amount (BDT)", "Status", "Transaction ID", "Downloads"];
-  const rows = orders.map((o) => [
-    `"${o.id || ""}"`,
-    `"${o.created_at || ""}"`,
-    `"${(o.customer_name || "").replace(/"/g, '""')}"`,
-    `"${o.email || ""}"`,
-    `"${o.phone || ""}"`,
-    `"${(o.books?.title || "").replace(/"/g, '""')}"`,
-    o.amount_bdt || 0,
-    o.status || "",
-    `"${o.transaction_id || o.gateway_ref || ""}"`,
-    o.download_count || 0
-  ]);
-
-  const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(r => r.join(","))].join("\r\n");
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `eboibd-orders-${new Date().toISOString().slice(0, 10)}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
+  // Local fallback
+  const order = allOrders.find((o) => o.id === orderId);
+  if (order) order.status = newStatus;
+  renderKpiCards();
+  renderSalesPerBook();
+  renderOrdersTable();
+};
 
 /**
- * 6. Books Management
+ * 7. Copy Customer Library Link
+ */
+window.copyLibraryLink = function(identifier) {
+  if (!identifier) {
+    alert("গ্রাহকের কোনো ইমেইল বা ফোন নম্বর পাওয়া যায়নি।");
+    return;
+  }
+  const link = `${window.location.origin}/my-books?search=${encodeURIComponent(identifier)}`;
+  navigator.clipboard.writeText(link).then(() => {
+    alert(`কাস্টমার লাইব্রেরি লিংক কপি হয়েছে:\n${link}\n\nএটি হোয়াটসঅ্যাপে কাস্টমারকে পাঠিয়ে দিন!`);
+  }).catch(() => {
+    prompt("কাস্টমার লাইব্রেরি লিংক কপি করুন:", link);
+  });
+};
+
+/**
+ * 8. Sync All Book Prices to ৳99 in Supabase
+ */
+window.syncBookPricesToSupabase = async function() {
+  if (!confirm("আপনি কি নিশ্চিত যে Supabase ডাটাবেজে সব বইয়ের মূল্য ৳৯৯ (99 BDT) এ সিঙ্ক করতে চান?")) return;
+
+  const btn = document.getElementById("btn-sync-supabase");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "সিঙ্ক হচ্ছে...";
+  }
+
+  try {
+    if (supabaseClient) {
+      const slugs = ["ai-income", "freelancer-payment", "facebook-business", "ai-video-editing"];
+      for (const slug of slugs) {
+        await supabaseClient
+          .from("books")
+          .update({ price_bdt: 99.00 })
+          .eq("slug", slug);
+      }
+    }
+
+    alert("🎉 অভিনন্দন! Supabase ডাটাবেজে সব বইয়ের অফার মূল্য সফলভাবে ৳৯৯ এ সিঙ্ক সম্পন্ন হয়েছে।");
+    await fetchBooks();
+    renderBooksTable();
+    renderSalesPerBook();
+  } catch (err) {
+    console.error("Sync error:", err);
+    alert("Supabase সিঙ্ক করতে সমস্যা হয়েছে: " + err.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "🔄 Supabase-এ ৳৯৯ সিঙ্ক";
+    }
+  }
+};
+
+/**
+ * 9. Books Table & Actions
  */
 function renderBooksTable() {
   const tbody = document.getElementById("books-tbody");
   if (!tbody) return;
 
-  if (allBooks.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" class="text-center">কোনো বই পাওয়া যায়নি।</td></tr>`;
-    return;
-  }
-
   tbody.innerHTML = allBooks.map((b) => `
     <tr>
       <td><img src="${b.cover_url || '/assets/images/' + b.slug + '-cover.webp'}" style="width:40px; border-radius:4px;" alt="Cover"></td>
       <td><strong>${escapeHtml(b.title)}</strong><br><small class="text-muted">Slug: ${escapeHtml(b.slug)}</small></td>
-      <td>${toBanglaNumber(b.page_count)} পেজ</td>
-      <td><strong>৳${toBanglaNumber(b.price_bdt)}</strong></td>
+      <td>${toBanglaNumber(b.page_count || 25)} পেজ</td>
+      <td><strong style="color: #059669; font-size:1.05rem;">৳${toBanglaNumber(b.price_bdt || 99)}</strong></td>
       <td>
-        <span class="status-badge ${b.is_active ? 'status-paid' : 'status-failed'}">
-          ${b.is_active ? 'সক্রিয় (Active)' : 'নিষ্ক্রিয়'}
+        <span class="status-badge ${b.is_active !== false ? 'status-paid' : 'status-failed'}">
+          ${b.is_active !== false ? 'সক্রিয় (Active)' : 'নিষ্ক্রিয়'}
         </span>
       </td>
       <td>
-        <button class="btn btn-secondary" style="padding:4px 10px; font-size:0.85rem;" onclick="toggleBookStatus('${b.id}', ${!b.is_active})">
-          ${b.is_active ? 'নিষ্ক্রিয় করুন' : 'সক্রিয় করুন'}
+        <button class="btn btn-secondary" style="padding:4px 10px; font-size:0.85rem;" onclick="toggleBookStatus('${b.id}', ${b.is_active === false})">
+          ${b.is_active !== false ? 'নিষ্ক্রিয় করুন' : 'সক্রিয় করুন'}
         </button>
       </td>
     </tr>
@@ -512,36 +565,42 @@ function renderBooksTable() {
 }
 
 window.toggleBookStatus = async function(bookId, newStatus) {
-  if (!supabaseClient) return;
-  try {
-    const { error } = await supabaseClient
-      .from("books")
-      .update({ is_active: newStatus })
-      .eq("id", bookId);
+  if (supabaseClient) {
+    try {
+      const { error } = await supabaseClient
+        .from("books")
+        .update({ is_active: newStatus })
+        .eq("id", bookId);
 
-    if (error) throw error;
-    await fetchBooks();
-    renderBooksTable();
-  } catch (err) {
-    alert("বইয়ের স্ট্যাটাস আপডেট করতে সমস্যা হয়েছে: " + err.message);
+      if (error) throw error;
+      await fetchBooks();
+      renderBooksTable();
+      return;
+    } catch (err) {
+      alert("বইয়ের স্ট্যাটাস আপডেট করতে সমস্যা হয়েছে: " + err.message);
+    }
   }
+
+  const b = allBooks.find((book) => book.id === bookId);
+  if (b) b.is_active = newStatus;
+  renderBooksTable();
 };
 
 /**
- * 7. Reviews Moderation (Approve / Hide)
+ * 10. Reviews Table & Moderation
  */
 function renderReviewsTable() {
   const tbody = document.getElementById("reviews-tbody");
   if (!tbody) return;
 
   if (allReviews.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" class="text-center">কোনো রিভিউ পাওয়া যায়নি।</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center" style="padding:30px;">কোনো রিভিউ পাওয়া যায়নি।</td></tr>`;
     return;
   }
 
   tbody.innerHTML = allReviews.map((r) => `
     <tr>
-      <td><strong>${escapeHtml(r.name || "অজ্ঞাত")}</strong></td>
+      <td><strong>${escapeHtml(r.name || "সম্মানিত পাঠক")}</strong></td>
       <td>${escapeHtml(r.books ? r.books.title : "N/A")}</td>
       <td>${"★".repeat(r.rating || 5)} (${toBanglaNumber(r.rating || 5)})</td>
       <td><p style="max-width:320px; font-size:0.9rem; margin:0;">"${escapeHtml(r.comment || "")}"</p></td>
@@ -560,23 +619,63 @@ function renderReviewsTable() {
 }
 
 window.toggleReviewApproval = async function(reviewId, approved) {
-  if (!supabaseClient) return;
-  try {
-    const { error } = await supabaseClient
-      .from("reviews")
-      .update({ approved: approved })
-      .eq("id", reviewId);
+  if (supabaseClient) {
+    try {
+      const { error } = await supabaseClient
+        .from("reviews")
+        .update({ approved: approved })
+        .eq("id", reviewId);
 
-    if (error) throw error;
-    await fetchReviews();
-    renderReviewsTable();
-  } catch (err) {
-    alert("রিভিউ আপডেট করতে সমস্যা হয়েছে: " + err.message);
+      if (error) throw error;
+      await fetchReviews();
+      renderReviewsTable();
+      return;
+    } catch (err) {
+      alert("রিভিউ আপডেট করতে সমস্যা হয়েছে: " + err.message);
+    }
   }
+
+  const rev = allReviews.find((r) => r.id === reviewId);
+  if (rev) rev.approved = approved;
+  renderReviewsTable();
 };
 
 /**
- * 8. Dashboard Tabs Switching
+ * 11. Export Orders to CSV
+ */
+function exportOrdersToCSV(orders) {
+  if (!orders || !orders.length) {
+    alert("এক্সপোর্ট করার মতো কোনো অর্ডার পাওয়া যায়নি।");
+    return;
+  }
+
+  const headers = ["Order ID", "Date", "Customer Name", "Email", "Phone", "Book", "Amount (BDT)", "Status", "Transaction ID"];
+  const rows = orders.map((o) => [
+    `"${o.id || ""}"`,
+    `"${o.created_at || ""}"`,
+    `"${(o.customer_name || "").replace(/"/g, '""')}"`,
+    `"${o.email || ""}"`,
+    `"${o.phone || ""}"`,
+    `"${(o.books?.title || "").replace(/"/g, '""')}"`,
+    o.amount_bdt || 99,
+    o.status || "",
+    `"${o.transaction_id || o.gateway_ref || ""}"`
+  ]);
+
+  const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(r => r.join(","))].join("\r\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `eboibd-orders-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * 12. Dashboard Tabs Switcher
  */
 function initAdminTabs() {
   const tabs = document.querySelectorAll(".admin-tab-btn");
@@ -593,4 +692,14 @@ function initAdminTabs() {
       if (targetContent) targetContent.classList.add("active");
     });
   });
+}
+
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }

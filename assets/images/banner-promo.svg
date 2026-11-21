@@ -16,12 +16,12 @@
   <!-- Left Promo Badge -->
   <g transform="translate(24, 28)">
     <rect width="110" height="64" rx="10" fill="url(#badgeGrad)" />
-    <text x="55" y="28" fill="#ffffff" font-family="'Hind Siliguri', sans-serif" font-weight="800" font-size="12" text-anchor="middle">স্পেশাল ডিল</text>
-    <text x="55" y="52" fill="#ffffff" font-family="'Anek Bangla', sans-serif" font-weight="800" font-size="22" text-anchor="middle">৫০% ছাড়</text>
+    <text x="55" y="28" fill="#ffffff" font-family="'Hind Siliguri', sans-serif" font-weight="800" font-size="12" text-anchor="middle">সীমিত অফার</text>
+    <text x="55" y="52" fill="#ffffff" font-family="'Anek Bangla', sans-serif" font-weight="800" font-size="20" text-anchor="middle">৮৩% ছাড়</text>
   </g>
   
   <!-- Text Content -->
-  <text x="156" y="50" fill="#ffffff" font-family="'Anek Bangla', sans-serif" font-weight="800" font-size="20">২০২৬ এর বেস্টসেলার ডিজিটাল ক্যারিয়ার হ্যান্ডবুক</text>
+  <text x="156" y="50" fill="#ffffff" font-family="'Anek Bangla', sans-serif" font-weight="800" font-size="20">🔥 মেগা ধামাকা অফার: প্রতিটি প্রিমিয়াম ইবুক মাত্র ৯৯ টাকা!</text>
   <text x="156" y="78" fill="#cbd5e1" font-family="'Hind Siliguri', sans-serif" font-weight="600" font-size="14">⚡ পেমেন্ট নিশ্চিত করলেই ৫ সেকেন্ডে সরাসরি ডাউনলোড • আজীবন ফ্রি আপডেট</text>
   <text x="156" y="98" fill="#fbbf24" font-family="'Hind Siliguri', sans-serif" font-weight="700" font-size="12">✔ বিকাশ • নগদ • রকেট • কার্ড সাপোর্টেড</text>
 
