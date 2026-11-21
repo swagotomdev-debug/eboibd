@@ -1,7 +1,7 @@
 /**
  * eboibd.site - Checkout Processing
  * - Validates input (strict Bangladeshi phone 01XXXXXXXXX)
- * - Submits order to create-payment Edge Function
+ * - Directly connects to /api/create-payment (Serverless) & ZiniPay Gateway
  * - Price is NEVER sent from browser (server reads price from database)
  */
 
@@ -110,69 +110,16 @@ function initCheckout() {
     `;
 
     try {
-      const config = window.EBOI_CONFIG;
+      const config = window.EBOI_CONFIG || {};
       const orderId = "ord_" + Date.now();
-
-      // 1. Direct ZiniPay Gateway API (Highest Priority - Fast & Reliable)
-      if (config.zinipayApiKey) {
-        // Record pending order in Supabase
-        try {
-          fetch(`${config.supabaseUrl}/rest/v1/orders`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "apikey": config.supabaseAnonKey,
-              "Authorization": `Bearer ${config.supabaseAnonKey}`,
-              "Prefer": "return=minimal"
-            },
-            body: JSON.stringify({
-              customer_name: name,
-              email: email,
-              phone: cleanPhone,
-              amount_bdt: Number(book.price),
-              status: "pending",
-              gateway_ref: orderId
-            })
-          }).catch(() => {});
-        } catch (_) {}
-
-        // Call ZiniPay Invoice API directly
-        const ziniRes = await fetch("https://api.zinipay.com/v1/payment/create", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "zini-api-key": config.zinipayApiKey
-          },
-          body: JSON.stringify({
-            amount: Number(book.price),
-            redirect_url: `https://eboibd.site/success.html?order=${orderId}`,
-            cancel_url: `https://eboibd.site/failed.html?order=${orderId}`,
-            webhook_url: `https://eboibd.site/api/verify-payment?order=${orderId}`,
-            cus_name: name,
-            cus_email: email,
-            metadata: {
-              order_id: orderId,
-              phone: cleanPhone,
-              slug: slug
-            }
-          })
-        });
-
-        const ziniData = await ziniRes.json();
-
-        if (ziniRes.ok && ziniData.status && ziniData.payment_url) {
-          // Instantly redirect customer to ZiniPay Payment Gateway (bKash / Nagad / Rocket)
-          window.location.href = ziniData.payment_url;
-          return;
-        } else if (ziniData && ziniData.message) {
-          throw new Error(ziniData.message);
-        }
-      }
-
-      // 2. Fallback to Serverless /api/create-payment
       let paymentUrl = null;
+
+      // 1. Primary: Serverless API /api/create-payment (Same domain on live, 100% reliable)
       try {
-        const res = await fetch("/api/create-payment", {
+        const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+        const apiUrl = isLocal ? "https://eboibd.site/api/create-payment" : "/api/create-payment";
+
+        const res = await fetch(apiUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -182,27 +129,69 @@ function initCheckout() {
             phone: cleanPhone
           })
         });
+
         if (res.ok) {
           const data = await res.json();
           if (data && data.success && data.payment_url) {
             paymentUrl = data.payment_url;
           }
         }
-      } catch (_) {}
+      } catch (apiErr) {
+        console.warn("Primary Serverless API warning:", apiErr);
+      }
 
+      // If serverless created payment URL, redirect customer immediately
       if (paymentUrl) {
         window.location.href = paymentUrl;
         return;
       }
 
-      // 3. Fallback for Local Testing
-      const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-      if (isLocal) {
+      // 2. Secondary Fallback: Direct ZiniPay Invoice API
+      if (config.zinipayApiKey) {
+        try {
+          const ziniRes = await fetch("https://api.zinipay.com/v1/payment/create", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "zini-api-key": config.zinipayApiKey
+            },
+            body: JSON.stringify({
+              amount: Number(book.price),
+              redirect_url: `https://eboibd.site/success.html?order=${orderId}`,
+              cancel_url: `https://eboibd.site/failed.html?order=${orderId}`,
+              webhook_url: `https://eboibd.site/api/verify-payment?order=${orderId}`,
+              cus_name: name,
+              cus_email: email,
+              metadata: {
+                order_id: orderId,
+                phone: cleanPhone,
+                slug: slug
+              }
+            })
+          });
+
+          if (ziniRes.ok) {
+            const ziniData = await ziniRes.json();
+            if (ziniData && ziniData.status && ziniData.payment_url) {
+              window.location.href = ziniData.payment_url;
+              return;
+            }
+          }
+        } catch (ziniErr) {
+          console.warn("Direct ZiniPay API warning:", ziniErr);
+        }
+      }
+
+      // 3. Tertiary Fallback: Localhost Demo Testing
+      const isLocalHost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+      if (isLocalHost) {
         window.location.href = `/success.html?order=demo_${Date.now()}&slug=${slug}&name=${encodeURIComponent(name)}`;
         return;
       }
 
-      throw new Error("পেমেন্ট গেটওয়েতে সংযোগ করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।");
+      // If all attempts failed, throw a friendly error
+      throw new Error("পেমেন্ট গেটওয়েতে সংযোগ করতে সমস্যা হচ্ছে। সরাসরি বিকাশ বা নগদে পেমেন্ট করতে আমাদের WhatsApp নম্বরে (" + (config.supportWhatsApp || "01540737205") + ") মেসেজ দিন।");
+
     } catch (err) {
       console.error("Payment error:", err);
       showAlert(err.message || "পেমেন্ট সম্পন্ন করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।");
@@ -213,7 +202,12 @@ function initCheckout() {
 
   function showAlert(msg) {
     if (!alertBox) return;
-    alertBox.textContent = msg;
+    alertBox.innerHTML = `
+      <div style="font-weight: 700; margin-bottom: 6px;">${msg}</div>
+      <a href="https://wa.me/8801540737205?text=${encodeURIComponent('আসসালামু আলাইকুম, আমি ইবুক কিনতে পারছি না, সাহায্য প্রয়োজন।')}" target="_blank" rel="noopener" style="display: inline-block; background: #16a34a; color: #fff; padding: 6px 14px; border-radius: 6px; text-decoration: none; font-size: 0.85rem; font-weight: 600; margin-top: 4px;">
+        💬 সরাসরি হোয়াটসঅ্যাপে হেল্প নিন
+      </a>
+    `;
     alertBox.style.display = "block";
   }
 
