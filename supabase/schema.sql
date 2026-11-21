@@ -149,6 +149,11 @@ create policy "Customers can view their order by id"
   on public.orders for select
   using (true);
 
+drop policy if exists "Anyone can create pending orders" on public.orders;
+create policy "Anyone can create pending orders"
+  on public.orders for insert
+  with check (status = 'pending');
+
 -- Policies for `reviews`
 drop policy if exists "Public can view approved reviews" on public.reviews;
 create policy "Public can view approved reviews"

@@ -42,6 +42,36 @@ async function initSuccessPage() {
     return;
   }
 
+  // Handle local demo test orders
+  if (orderId && orderId.startsWith("demo_")) {
+    const slug = params.get("slug") || "ai-income";
+    const book = (window.EBOI_CONFIG && window.EBOI_CONFIG.books[slug]) || {};
+    if (loadingEl) loadingEl.style.display = "none";
+    if (contentEl) contentEl.style.display = "block";
+    if (orderIdEl) orderIdEl.textContent = orderId.slice(0, 12);
+    if (bookTitleEl) bookTitleEl.textContent = book.title || "ডিজিটাল ইবুক";
+    if (amountEl) amountEl.textContent = `৳${toBanglaNumber(book.price || 299)}`;
+    if (trxEl) trxEl.textContent = "DEMO_TEST_PAID";
+
+    const bookMockupEl = document.getElementById("receipt-book-mockup");
+    if (bookMockupEl) bookMockupEl.src = book.mockupUrl || `/assets/images/${slug}-mockup.webp`;
+
+    if (downloadBtn) {
+      downloadBtn.addEventListener("click", () => {
+        downloadBtn.textContent = "ডাউনলোড শুরু হয়েছে...";
+        // Download sample ebook
+        const a = document.createElement("a");
+        a.href = `/sample-ebooks/${slug}.pdf`;
+        a.download = `${slug}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      });
+    }
+    initReviewForm(orderId, params.get("name") || "সম্মানিত পাঠক");
+    return;
+  }
+
   try {
     const config = window.EBOI_CONFIG;
     let result = null;

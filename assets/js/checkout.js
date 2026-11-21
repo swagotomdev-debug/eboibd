@@ -118,10 +118,9 @@ function initCheckout() {
         phone: cleanPhone
       };
 
-      let data = null;
-      let lastError = null;
+      let paymentUrl = null;
 
-      // 1. Try Vercel /api/create-payment first
+      // 1. Try Vercel Serverless /api/create-payment
       try {
         const res = await fetch("/api/create-payment", {
           method: "POST",
@@ -129,14 +128,15 @@ function initCheckout() {
           body: JSON.stringify(requestPayload)
         });
         if (res.ok) {
-          data = await res.json();
+          const data = await res.json();
+          if (data && data.success && data.payment_url) {
+            paymentUrl = data.payment_url;
+          }
         }
-      } catch (e) {
-        lastError = e;
-      }
+      } catch (_) {}
 
-      // 2. If Vercel API didn't return success, try Supabase Edge Function
-      if (!data || !data.success) {
+      // 2. Try Supabase Edge Function create-payment
+      if (!paymentUrl && config.functionsUrl) {
         try {
           const res = await fetch(`${config.functionsUrl}/create-payment`, {
             method: "POST",
@@ -148,26 +148,61 @@ function initCheckout() {
             body: JSON.stringify(requestPayload)
           });
           if (res.ok) {
-            data = await res.json();
+            const data = await res.json();
+            if (data && data.success && data.payment_url) {
+              paymentUrl = data.payment_url;
+            }
           }
-        } catch (e) {
-          lastError = e;
-        }
+        } catch (_) {}
       }
 
-      if (!data || !data.success) {
-        throw new Error((data && data.error) || "পেমেন্ট গেটওয়েতে সংযোগ করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।");
+      // 3. Direct ZiniPay API Call (if zinipayApiKey is present in config)
+      if (!paymentUrl && config.zinipayApiKey) {
+        try {
+          const orderId = "ord_" + Date.now();
+          const ziniRes = await fetch("https://api.zinipay.com/v1/payment/create", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "zini-api-key": config.zinipayApiKey
+            },
+            body: JSON.stringify({
+              amount: Number(book.price),
+              redirect_url: `https://eboibd.site/success.html?order=${orderId}`,
+              cancel_url: `https://eboibd.site/failed.html?order=${orderId}`,
+              webhook_url: `https://eboibd.site/api/verify-payment?order=${orderId}`,
+              cus_name: name,
+              cus_email: email,
+              metadata: { order_id: orderId, phone: cleanPhone, slug: slug }
+            })
+          });
+          if (ziniRes.ok) {
+            const ziniData = await ziniRes.json();
+            if (ziniData && ziniData.status && ziniData.payment_url) {
+              paymentUrl = ziniData.payment_url;
+            }
+          }
+        } catch (_) {}
       }
 
-      // Redirect immediately to payment gateway URL (e.g. ZiniPay bKash/Nagad checkout)
-      if (data.payment_url) {
-        window.location.href = data.payment_url;
+      // 4. If on Localhost or Testing Environment without live API key, provide seamless test checkout
+      const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+      if (!paymentUrl && isLocal) {
+        // Create demo order ID and redirect to success page to test complete download flow
+        const demoOrderId = "demo_" + Date.now();
+        window.location.href = `/success.html?order=${demoOrderId}&slug=${slug}&name=${encodeURIComponent(name)}`;
+        return;
+      }
+
+      if (paymentUrl) {
+        // Redirect directly to ZiniPay Gateway
+        window.location.href = paymentUrl;
       } else {
-        throw new Error("পেমেন্ট গেটওয়ের লিংক পাওয়া যায়নি।");
+        throw new Error("পেমেন্ট গেটওয়েতে সংযোগ করতে সমস্যা হয়েছে। আপনার ZiniPay API Key টি নিশ্চিত করুন।");
       }
     } catch (err) {
-      console.error("Payment creation error:", err);
-      showAlert(err.message || "একটি অনাকাঙ্ক্ষিত ত্রুটি ঘটেছে। কিছুক্ষণ পর আবার চেষ্টা করুন।");
+      console.error("Payment error:", err);
+      showAlert(err.message || "পেমেন্ট সম্পন্ন করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।");
       submitBtn.disabled = false;
       submitBtn.innerHTML = `<span>নিরাপদে পেমেন্ট করুন · ৳${toBanglaNumber(book.price)}</span>`;
     }

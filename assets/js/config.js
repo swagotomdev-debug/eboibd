@@ -12,6 +12,9 @@ window.EBOI_CONFIG = {
     return `${this.supabaseUrl}/functions/v1`;
   },
 
+  // ZiniPay API Key (can be set here or via Vercel / Supabase Secrets)
+  zinipayApiKey: window.__ZINIPAY_API_KEY__ || "",
+
   // WhatsApp Support
   supportWhatsApp: "01540737205",
   supportEmail: "team@eboibd.site",
