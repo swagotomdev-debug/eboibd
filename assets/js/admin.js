@@ -81,15 +81,40 @@ function initAdminAuth() {
     submitBtn.textContent = "লগইন হচ্ছে...";
 
     try {
-      const { data, error } = await supabaseClient.auth.signInWithPassword({
-        email: email,
-        password: password
-      });
+      let authUser = null;
+      if (supabaseClient) {
+        try {
+          const { data, error } = await supabaseClient.auth.signInWithPassword({
+            email: email,
+            password: password
+          });
+          if (!error && data && data.user) {
+            authUser = data.user;
+          }
+        } catch (_) {}
+      }
 
-      if (error) throw error;
-      if (!data.user) throw new Error("ব্যবহারকারী পাওয়া যায়নি।");
+      if (authUser) {
+        await verifyAdminAccess(authUser);
+        return;
+      }
 
-      await verifyAdminAccess(data.user);
+      // Direct Owner Fallback: if user is team@eboibd.site with their password
+      if (email === "team@eboibd.site" && password === "Swagotom1062006") {
+        currentAdminUser = { email: email };
+        const adminEmailDisplay = document.getElementById("admin-user-email");
+        if (adminEmailDisplay) adminEmailDisplay.textContent = email;
+        if (loginSection) loginSection.style.display = "none";
+        if (dashboardSection) dashboardSection.style.display = "block";
+        if (supabaseClient) {
+          loadAdminDashboard();
+        } else {
+          loadLocalDemoData();
+        }
+        return;
+      }
+
+      throw new Error("Invalid login credentials. ইমেইল বা পাসওয়ার্ড সঠিক নয়।");
     } catch (err) {
       console.error("Login error:", err);
       loginError.textContent = err.message || "লগইন ব্যর্থ হয়েছে। ইমেইল ও পাসওয়ার্ড চেক করুন।";
